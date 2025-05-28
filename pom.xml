@@ -54,6 +54,13 @@
             <artifactId>flyway-core</artifactId>
         </dependency>
 
+        <!-- Flyway PostgreSQL support (tutaj Flyway rozpozna Postgresa 17) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-database-postgresql</artifactId>
+            <!-- wersja nie jest konieczna, bo zarządza nią parent Spring Boot -->
+        </dependency>
+
         <!-- OpenAPI/Swagger UI for interactive API docs -->
         <dependency>
             <groupId>org.springdoc</groupId>
