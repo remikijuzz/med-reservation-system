@@ -1,35 +1,57 @@
 package org.example.medreservationsystem.model;
 
-import jakarta.persistence.*;
-import lombok.Data;
-import java.time.LocalDateTime;
+import javax.persistence.*;
+import java.util.List;
 
-@Data
 @Entity
-@Table(name = "doctor")
+@Table(name = "doctors")
 public class Doctor {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "first_name", nullable = false, length = 100)
-    private String firstName;
+    @Column(nullable = false)
+    private String name;
 
-    @Column(name = "last_name", nullable = false, length = 100)
-    private String lastName;
+    @Column(nullable = false)
+    private String specialization;
 
-    @Column(length = 100)
-    private String specialty;
+    @OneToMany(mappedBy = "doctor", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Appointment> appointments;
 
-    @Column(unique = true, length = 150)
-    private String email;
+    public Doctor() { }
 
-    @Column(length = 20)
-    private String phone;
+    public Doctor(String name, String specialization) {
+        this.name = name;
+        this.specialization = specialization;
+    }
 
-    @Column(name = "created_at", updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    public Long getId() {
+        return id;
+    }
 
-    public Doctor() {}
+    public String getName() {
+        return name;
+    }
 
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public String getSpecialization() {
+        return specialization;
+    }
+
+    public void setSpecialization(String specialization) {
+        this.specialization = specialization;
+    }
+
+    public List<Appointment> getAppointments() {
+        return appointments;
+    }
+
+    public void setAppointments(List<Appointment> appointments) {
+        this.appointments = appointments;
+    }
 }

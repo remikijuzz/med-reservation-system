@@ -1,43 +1,48 @@
 package org.example.medreservationsystem.service;
 
-import lombok.RequiredArgsConstructor;
 import org.example.medreservationsystem.model.Patient;
 import org.example.medreservationsystem.repository.PatientRepository;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class PatientService {
-    private final PatientRepository repo;
 
-    public List<Patient> findAll() {
-        return repo.findAll();
+    private final PatientRepository patientRepository;
+
+    @Autowired
+    public PatientService(PatientRepository patientRepository) {
+        this.patientRepository = patientRepository;
     }
 
-    public Patient findById(Long id) {
-        return repo.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Patient not found"));
+    public List<Patient> getAllPatients() {
+        return patientRepository.findAll();
     }
 
-    public Patient create(Patient patient) {
-        return repo.save(patient);
+    public Patient getPatientById(Long id) {
+        Optional<Patient> opt = patientRepository.findById(id);
+        return opt.orElse(null);
     }
 
-    public Patient update(Long id, Patient patient) {
-        Patient existing = findById(id);
-        existing.setFirstName(patient.getFirstName());
-        existing.setLastName(patient.getLastName());
-        existing.setEmail(patient.getEmail());
-        existing.setPhone(patient.getPhone());
-        return repo.save(existing);
+    public Patient createPatient(Patient patient) {
+        return patientRepository.save(patient);
     }
 
-    public void delete(Long id) {
-        Patient existing = findById(id);
-        repo.delete(existing);
+    public Patient updatePatient(Long id, Patient patientDetails) {
+        return patientRepository.findById(id).map(patient -> {
+            patient.setName(patientDetails.getName());
+            patient.setEmail(patientDetails.getEmail());
+            return patientRepository.save(patient);
+        }).orElse(null);
+    }
+
+    public boolean deletePatient(Long id) {
+        return patientRepository.findById(id).map(patient -> {
+            patientRepository.delete(patient);
+            return true;
+        }).orElse(false);
     }
 }

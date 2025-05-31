@@ -1,51 +1,62 @@
 package org.example.medreservationsystem.controller;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.example.medreservationsystem.model.Patient;
 import org.example.medreservationsystem.service.PatientService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "Patients", description = "Operations about patients")
 @RestController
 @RequestMapping("/api/patients")
-@RequiredArgsConstructor
 public class PatientController {
-    private final PatientService service;
 
-    @Operation(summary = "Get all patients")
+    private final PatientService patientService;
+
+    @Autowired
+    public PatientController(PatientService patientService) {
+        this.patientService = patientService;
+    }
+
+    // Każdy zalogowany USER lub ADMIN może pobrać listę i szczegóły
     @GetMapping
-    public List<Patient> getAll() {
-        return service.findAll();
+    public List<Patient> getAllPatients() {
+        return patientService.getAllPatients();
     }
 
-    @Operation(summary = "Get a patient by ID")
     @GetMapping("/{id}")
-    public Patient getById(@PathVariable Long id) {
-        return service.findById(id);
+    public ResponseEntity<Patient> getPatientById(@PathVariable Long id) {
+        Patient patient = patientService.getPatientById(id);
+        if (patient == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(patient);
     }
 
-    @Operation(summary = "Create a new patient")
+    // Tylko ADMIN może tworzyć pacjenta
     @PostMapping
-    public ResponseEntity<Patient> create(@RequestBody Patient patient) {
-        Patient created = service.create(patient);
-        return ResponseEntity.status(201).body(created);
+    public Patient createPatient(@RequestBody Patient patient) {
+        return patientService.createPatient(patient);
     }
 
-    @Operation(summary = "Update an existing patient")
+    // Tylko ADMIN może aktualizować pacjenta
     @PutMapping("/{id}")
-    public Patient update(@PathVariable Long id, @RequestBody Patient patient) {
-        return service.update(id, patient);
+    public ResponseEntity<Patient> updatePatient(@PathVariable Long id, @RequestBody Patient patientDetails) {
+        Patient updated = patientService.updatePatient(id, patientDetails);
+        if (updated == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(updated);
     }
 
-    @Operation(summary = "Delete patient by ID")
+    // Tylko ADMIN może usuwać pacjenta
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
+    public ResponseEntity<Void> deletePatient(@PathVariable Long id) {
+        boolean deleted = patientService.deletePatient(id);
+        if (!deleted) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.noContent().build();
     }
 }

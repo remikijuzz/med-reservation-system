@@ -1,51 +1,62 @@
 package org.example.medreservationsystem.controller;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.example.medreservationsystem.model.Doctor;
 import org.example.medreservationsystem.service.DoctorService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "Doctors", description = "Operations about doctors")
 @RestController
 @RequestMapping("/api/doctors")
-@RequiredArgsConstructor
 public class DoctorController {
-    private final DoctorService service;
 
-    @Operation(summary = "Get all doctors")
+    private final DoctorService doctorService;
+
+    @Autowired
+    public DoctorController(DoctorService doctorService) {
+        this.doctorService = doctorService;
+    }
+
+    // Każdy zalogowany USER lub ADMIN może pobrać listę i szczegóły
     @GetMapping
-    public List<Doctor> getAll() {
-        return service.findAll();
+    public List<Doctor> getAllDoctors() {
+        return doctorService.getAllDoctors();
     }
 
-    @Operation(summary = "Get a doctor by ID")
     @GetMapping("/{id}")
-    public Doctor getById(@PathVariable Long id) {
-        return service.findById(id);
+    public ResponseEntity<Doctor> getDoctorById(@PathVariable Long id) {
+        Doctor doctor = doctorService.getDoctorById(id);
+        if (doctor == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(doctor);
     }
 
-    @Operation(summary = "Create a new doctor")
+    // Tylko ADMIN może tworzyć nowego lekarza
     @PostMapping
-    public ResponseEntity<Doctor> create(@RequestBody Doctor doctor) {
-        Doctor created = service.create(doctor);
-        return ResponseEntity.status(201).body(created);
+    public Doctor createDoctor(@RequestBody Doctor doctor) {
+        return doctorService.createDoctor(doctor);
     }
 
-    @Operation(summary = "Update an existing doctor")
+    // Tylko ADMIN może aktualizować lekarza
     @PutMapping("/{id}")
-    public Doctor update(@PathVariable Long id, @RequestBody Doctor doctor) {
-        return service.update(id, doctor);
+    public ResponseEntity<Doctor> updateDoctor(@PathVariable Long id, @RequestBody Doctor doctorDetails) {
+        Doctor updated = doctorService.updateDoctor(id, doctorDetails);
+        if (updated == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(updated);
     }
 
-    @Operation(summary = "Delete a doctor by ID")
+    // Tylko ADMIN może usuwać lekarza
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
-        service.delete(id);
+    public ResponseEntity<Void> deleteDoctor(@PathVariable Long id) {
+        boolean deleted = doctorService.deleteDoctor(id);
+        if (!deleted) {
+            return ResponseEntity.notFound().build();
+        }
         return ResponseEntity.noContent().build();
     }
 }

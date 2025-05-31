@@ -1,44 +1,48 @@
 package org.example.medreservationsystem.service;
 
-import lombok.RequiredArgsConstructor;
 import org.example.medreservationsystem.model.Doctor;
 import org.example.medreservationsystem.repository.DoctorRepository;
-import org.springframework.http.HttpStatus;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 public class DoctorService {
-    private final DoctorRepository repo;
 
-    public List<Doctor> findAll() {
-        return repo.findAll();
+    private final DoctorRepository doctorRepository;
+
+    @Autowired
+    public DoctorService(DoctorRepository doctorRepository) {
+        this.doctorRepository = doctorRepository;
     }
 
-    public Doctor findById(Long id) {
-        return repo.findById(id)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Doctor not found"));
+    public List<Doctor> getAllDoctors() {
+        return doctorRepository.findAll();
     }
 
-    public Doctor create(Doctor doctor) {
-        return repo.save(doctor);
+    public Doctor getDoctorById(Long id) {
+        Optional<Doctor> opt = doctorRepository.findById(id);
+        return opt.orElse(null);
     }
 
-    public Doctor update(Long id, Doctor doctor) {
-        Doctor existing = findById(id);
-        existing.setFirstName(doctor.getFirstName());
-        existing.setLastName(doctor.getLastName());
-        existing.setSpecialty(doctor.getSpecialty());
-        existing.setEmail(doctor.getEmail());
-        existing.setPhone(doctor.getPhone());
-        return repo.save(existing);
+    public Doctor createDoctor(Doctor doctor) {
+        return doctorRepository.save(doctor);
     }
 
-    public void delete(Long id) {
-        Doctor existing = findById(id);
-        repo.delete(existing);
+    public Doctor updateDoctor(Long id, Doctor doctorDetails) {
+        return doctorRepository.findById(id).map(doctor -> {
+            doctor.setName(doctorDetails.getName());
+            doctor.setSpecialization(doctorDetails.getSpecialization());
+            return doctorRepository.save(doctor);
+        }).orElse(null);
+    }
+
+    public boolean deleteDoctor(Long id) {
+        return doctorRepository.findById(id).map(doctor -> {
+            doctorRepository.delete(doctor);
+            return true;
+        }).orElse(false);
     }
 }

@@ -1,41 +1,43 @@
 package org.example.medreservationsystem.controller;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.Data;
-import lombok.RequiredArgsConstructor;
 import org.example.medreservationsystem.model.User;
 import org.example.medreservationsystem.service.AuthService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Auth", description = "User registration & login")
 @RestController
 @RequestMapping("/api/auth")
-@RequiredArgsConstructor
 public class AuthController {
+
     private final AuthService authService;
 
-    @Operation(summary = "Register a new user")
+    @Autowired
+    public AuthController(AuthService authService) {
+        this.authService = authService;
+    }
+
+    // rejestracja zwykłego użytkownika (ROLE_USER)
     @PostMapping("/register")
-    public ResponseEntity<User> register(@RequestBody RegisterRequest req) {
-        User created = authService.register(req.getUsername(), req.getPassword());
-        return ResponseEntity.status(201).body(created);
+    public User registerUser(@RequestBody User user) {
+        return authService.register(user);
     }
 
-    @Operation(summary = "Login (use HTTP Basic or form login)")
-    @GetMapping("/login")
-    public ResponseEntity<String> login() {
-        // punkt końcowy do testowania po uwierzytelnieniu Basic
-        return ResponseEntity.ok("Logged in as: " + 
-            org.springframework.security.core.context.SecurityContextHolder
-                .getContext().getAuthentication().getName()
-        );
+    // rejestracja admina – dostępna tylko dla istniejącego ADMINA
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/register-admin")
+    public User registerAdmin(@RequestBody User user) {
+        return authService.registerAdmin(user);
     }
 
-    @Data
-    static class RegisterRequest {
-        private String username;
-        private String password;
+    // logowanie – zwraca prosty token (dummy)
+    @PostMapping("/login")
+    public ResponseEntity<String> loginUser(@RequestBody User user) {
+        String token = authService.login(user);
+        if (token == null) {
+            return ResponseEntity.status(401).body("Nieprawidłowe dane logowania");
+        }
+        return ResponseEntity.ok(token);
     }
 }

@@ -1,24 +1,67 @@
 package org.example.medreservationsystem.model;
 
-import jakarta.persistence.*;
-import lombok.Data;
-import java.util.Set;
+import javax.persistence.*;
 
 @Entity
-@Table(name = "app_user")
-@Data
+@Table(name = "users")
 public class User {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+
+    public static final String ROLE_USER = "ROLE_USER";
+    public static final String ROLE_ADMIN = "ROLE_ADMIN";
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false, length = 50)
+    @Column(unique = true, nullable = false)
     private String username;
 
     @Column(nullable = false)
-    private String password; // zaszyfrowane
+    private String password;
 
-    @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "user_role", joinColumns = @JoinColumn(name = "user_id"))
-    @Column(name = "role")
-    private Set<String> roles;
+    @Column(nullable = false)
+    private String role;
+
+    public User() { }
+
+    public User(String username, String password, String role) {
+        this.username = username;
+        this.password = password;
+        setRole(role);
+    }
+
+    public Long getId() {
+        return id;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    // Hasło przechowujemy już zahashowane w DB
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getRole() {
+        return role;
+    }
+
+    public void setRole(String role) {
+        if (role == null) {
+            this.role = ROLE_USER;
+        } else if (!role.startsWith("ROLE_")) {
+            this.role = "ROLE_" + role;
+        } else {
+            this.role = role;
+        }
+    }
 }
