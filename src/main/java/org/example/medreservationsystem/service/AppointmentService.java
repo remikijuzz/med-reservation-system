@@ -12,10 +12,13 @@ import java.util.Optional;
 public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
+    private final NotificationService notificationService;
 
     @Autowired
-    public AppointmentService(AppointmentRepository appointmentRepository) {
+    public AppointmentService(AppointmentRepository appointmentRepository,
+                              NotificationService notificationService) {
         this.appointmentRepository = appointmentRepository;
+        this.notificationService = notificationService;
     }
 
     public List<Appointment> getAllAppointments() {
@@ -28,7 +31,10 @@ public class AppointmentService {
     }
 
     public Appointment createAppointment(Appointment appointment) {
-        return appointmentRepository.save(appointment);
+        Appointment saved = appointmentRepository.save(appointment);
+        // Po zapisaniu wysyłamy powiadomienie
+        notificationService.sendNotification(saved);
+        return saved;
     }
 
     public Appointment updateAppointment(Long id, Appointment appointmentDetails) {
@@ -36,7 +42,10 @@ public class AppointmentService {
             appointment.setDate(appointmentDetails.getDate());
             appointment.setDoctor(appointmentDetails.getDoctor());
             appointment.setPatient(appointmentDetails.getPatient());
-            return appointmentRepository.save(appointment);
+            Appointment updated = appointmentRepository.save(appointment);
+            // Po aktualizacji również możemy powiadomić
+            notificationService.sendNotification(updated);
+            return updated;
         }).orElse(null);
     }
 
