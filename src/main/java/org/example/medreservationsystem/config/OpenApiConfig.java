@@ -19,5 +19,4 @@ import org.springframework.context.annotation.Configuration;
   }
 )
 public class OpenApiConfig {
-  // puste ciało – adnotacja załatwia konfigurację
 }
