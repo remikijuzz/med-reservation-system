@@ -18,20 +18,20 @@ public class AuthController {
         this.authService = authService;
     }
 
-    // rejestracja zwykłego użytkownika (ROLE_USER)
+    // Rejestracja zwykłego użytkownika (ROLE_USER)
     @PostMapping("/register")
     public User registerUser(@RequestBody User user) {
         return authService.register(user);
     }
 
-    // rejestracja admina – dostępna tylko dla istniejącego ADMINA
+    // Rejestracja admina – dostępna tylko dla istniejącego ADMINA
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/register-admin")
     public User registerAdmin(@RequestBody User user) {
         return authService.registerAdmin(user);
     }
 
-    // logowanie – zwraca prosty token (dummy)
+    // Logowanie – zwraca prosty „dummy” token
     @PostMapping("/login")
     public ResponseEntity<String> loginUser(@RequestBody User user) {
         String token = authService.login(user);

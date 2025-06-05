@@ -52,13 +52,12 @@
         </dependency>
 
         <!-- 5. (opcjonalnie) PostgreSQL Driver, gdybyś chciał później użyć PostgreSQL -->
-        <!--
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-        -->
+
 
         <!-- 6. Springdoc OpenAPI (Swagger) -->
         <dependency>
@@ -75,12 +74,12 @@
         </dependency>
 
         <!-- 8. (opcjonalnie) Flyway, gdy będziesz dodawać migracje bazy -->
-        <!--
+        
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
         </dependency>
-        -->
+        
     </dependencies>
 
     <build>

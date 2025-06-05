@@ -3,7 +3,7 @@ package org.example.medreservationsystem.model;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "users")
+@Table(name = "app_user")
 public class User {
 
     public static final String ROLE_USER = "ROLE_USER";
@@ -17,7 +17,7 @@ public class User {
     private String username;
 
     @Column(nullable = false)
-    private String password;
+    private String password;      // tutaj przechowujemy hasło dosłownie
 
     @Column(nullable = false)
     private String role;
@@ -46,7 +46,7 @@ public class User {
         return password;
     }
 
-    // Hasło przechowujemy już zahashowane w DB
+    // Hasło ustawiamy dokładnie takim, jak je otrzymaliśmy w JSON-ie
     public void setPassword(String password) {
         this.password = password;
     }
