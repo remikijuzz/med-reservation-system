@@ -50,6 +50,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Flyway Core (migracja bazy danych) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+        </dependency>
+
         <!-- (opcjonalnie, jeśli nadal wykorzystywane do celów testowych lub lokalnych) H2 Database -->
         <!--
         <dependency>
