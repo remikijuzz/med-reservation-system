@@ -2,7 +2,6 @@ package org.example.medreservationsystem.service;
 
 import org.example.medreservationsystem.model.Doctor;
 import org.example.medreservationsystem.repository.DoctorRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,7 +11,6 @@ public class DoctorService {
 
     private final DoctorRepository doctorRepository;
 
-    @Autowired
     public DoctorService(DoctorRepository doctorRepository) {
         this.doctorRepository = doctorRepository;
     }
