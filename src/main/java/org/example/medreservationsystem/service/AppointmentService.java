@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class AppointmentService {
@@ -21,20 +20,18 @@ public class AppointmentService {
         this.notificationService = notificationService;
     }
 
+    public Appointment saveAppointment(Appointment appointment) {
+        Appointment saved = appointmentRepository.save(appointment);
+        notificationService.sendNotification(saved);
+        return saved;
+    }
+
     public List<Appointment> getAllAppointments() {
         return appointmentRepository.findAll();
     }
 
     public Appointment getAppointmentById(Long id) {
-        Optional<Appointment> opt = appointmentRepository.findById(id);
-        return opt.orElse(null);
-    }
-
-    public Appointment createAppointment(Appointment appointment) {
-        Appointment saved = appointmentRepository.save(appointment);
-        // Po zapisaniu wysyłamy powiadomienie
-        notificationService.sendNotification(saved);
-        return saved;
+        return appointmentRepository.findById(id).orElse(null);
     }
 
     public Appointment updateAppointment(Long id, Appointment appointmentDetails) {
@@ -42,8 +39,9 @@ public class AppointmentService {
             appointment.setDate(appointmentDetails.getDate());
             appointment.setDoctor(appointmentDetails.getDoctor());
             appointment.setPatient(appointmentDetails.getPatient());
+            // Jeśli masz status, odkomentuj:
+//            appointment.setStatus(appointmentDetails.getStatus());
             Appointment updated = appointmentRepository.save(appointment);
-            // Po aktualizacji również możemy powiadomić
             notificationService.sendNotification(updated);
             return updated;
         }).orElse(null);

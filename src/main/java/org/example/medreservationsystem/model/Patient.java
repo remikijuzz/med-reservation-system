@@ -1,57 +1,26 @@
 package org.example.medreservationsystem.model;
 
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
 import javax.persistence.*;
-import java.util.List;
 
 @Entity
-@Table(name = "patients")
-public class Patient {
+@Table(name = "patient")
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+public class Patient extends User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "first_name", nullable = false)
+    private String firstName;
 
-    @Column(nullable = false)
-    private String name;
+    @Column(name = "last_name", nullable = false)
+    private String lastName;
 
-    @Column(nullable = false, unique = true)
+    @Column(unique = true)
     private String email;
 
-    @OneToMany(mappedBy = "patient", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Appointment> appointments;
-
-    public Patient() { }
-
-    public Patient(String name, String email) {
-        this.name = name;
-        this.email = email;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public List<Appointment> getAppointments() {
-        return appointments;
-    }
-
-    public void setAppointments(List<Appointment> appointments) {
-        this.appointments = appointments;
-    }
+    private String phone;
 }

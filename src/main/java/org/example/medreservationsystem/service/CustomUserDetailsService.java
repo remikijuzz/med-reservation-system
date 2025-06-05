@@ -3,11 +3,8 @@ package org.example.medreservationsystem.service;
 import org.example.medreservationsystem.model.User;
 import org.example.medreservationsystem.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.core.userdetails.*;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -26,13 +23,12 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User user = userRepository.findByUsername(username);
         if (user == null) {
-            throw new UsernameNotFoundException("Użytkownik o nazwie '" + username + "' nie został znaleziony");
+            throw new UsernameNotFoundException("Nie znaleziono użytkownika: " + username);
         }
-        GrantedAuthority authority = new SimpleGrantedAuthority(user.getRole());
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getPassword(),
-                Collections.singletonList(authority)
+                Collections.singletonList(new SimpleGrantedAuthority(user.getRole()))
         );
     }
 }

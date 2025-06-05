@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 /**
- * Implementacja NotificationService wysyłająca „emailem”.
+ * Implementacja NotificationService wysyłająca „Email”.
  */
 @Service
 @Primary
@@ -17,13 +17,13 @@ public class EmailNotificationService implements NotificationService {
 
     @Override
     public void sendNotification(Appointment appointment) {
-        // Tutaj w rzeczywistej aplikacji byłby kod wysyłający email.
-        // Dla uproszczenia wypisujemy w logu:
         String msg = String.format(
-            "Email: Wizyta zaplanowana na %s dla pacjenta [%s] u lekarza [%s].",
+            "Email: Wizyta zaplanowana na %s dla pacjenta [%s %s] u lekarza [%s %s].",
             appointment.getDate(),
-            appointment.getPatient().getName(),
-            appointment.getDoctor().getName()
+            appointment.getPatient().getFirstName(),
+            appointment.getPatient().getLastName(),
+            appointment.getDoctor().getFirstName(),
+            appointment.getDoctor().getLastName()
         );
         log.info(msg);
     }

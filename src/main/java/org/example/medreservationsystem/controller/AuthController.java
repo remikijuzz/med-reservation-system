@@ -4,7 +4,6 @@ import org.example.medreservationsystem.model.User;
 import org.example.medreservationsystem.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -18,20 +17,18 @@ public class AuthController {
         this.authService = authService;
     }
 
-    // Rejestracja zwykłego użytkownika (ROLE_USER)
     @PostMapping("/register")
-    public User registerUser(@RequestBody User user) {
-        return authService.register(user);
+    public ResponseEntity<User> registerUser(@RequestBody User user) {
+        User saved = authService.register(user);
+        return ResponseEntity.ok(saved);
     }
 
-    // Rejestracja admina – dostępna tylko dla istniejącego ADMINA
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/register-admin")
-    public User registerAdmin(@RequestBody User user) {
-        return authService.registerAdmin(user);
+    public ResponseEntity<User> registerAdmin(@RequestBody User user) {
+        User saved = authService.registerAdmin(user);
+        return ResponseEntity.ok(saved);
     }
 
-    // Logowanie – zwraca prosty „dummy” token
     @PostMapping("/login")
     public ResponseEntity<String> loginUser(@RequestBody User user) {
         String token = authService.login(user);

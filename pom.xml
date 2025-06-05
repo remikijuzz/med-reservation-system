@@ -1,137 +1,186 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
-                             http://maven.apache.org/xsd/maven-4.0.0.xsd">
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+                             https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-
-    <groupId>org.example</groupId>
-    <artifactId>med-reservation-system</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-    <packaging>jar</packaging>
-
-    <name>med-reservation-system</name>
-    <description>Projekt: system rezerwacji wizyt medycznych</description>
 
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.7.10</version>
+        <version>2.7.5</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
+    <groupId>org.example</groupId>
+    <artifactId>med-reservation-system</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>med-reservation-system</name>
+    <description>Medical Reservation System</description>
+
     <properties>
-        <java.version>17</java.version>
-        <springdoc.version>1.6.9</springdoc.version>
+        <!-- Kompilujemy kod jako Java 11 -->
+        <java.version>11</java.version>
+        <!-- Springfox w wersji 3.0.0 (dostępne w JCenter) -->
+        <springfox.version>3.0.0</springfox.version>
+        <flyway.version>8.1.0</flyway.version>
+        <jacoco.version>0.8.7</jacoco.version>
+        <!-- Zaktualizowana wersja Lombok -->
+        <lombok.version>1.18.26</lombok.version>
+        <!-- Użyjemy nowszej wtyczki kompilatora -->
+        <maven.compiler.plugin.version>3.10.1</maven.compiler.plugin.version>
     </properties>
 
+    <!-- Repozytorium JCenter, by pobrać Springfox 3.0.0 -->
+    <repositories>
+        <repository>
+            <id>jcenter</id>
+            <name>JCenter</name>
+            <url>https://jcenter.bintray.com/</url>
+        </repository>
+    </repositories>
+
     <dependencies>
-        <!-- 1. Spring Boot Web (REST) -->
+        <!-- Spring Boot Starter Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- 2. Spring Data JPA -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-
-        <!-- 3. Spring Security -->
+        <!-- Spring Boot Starter Security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
 
-        <!-- 4. H2 Database (dla szybkiego testu i developmentu) -->
+        <!-- Spring Data JPA -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+
+        <!-- H2 Database (runtime) -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
         </dependency>
 
-        <!-- 5. (opcjonalnie) PostgreSQL Driver, gdybyś chciał później użyć PostgreSQL -->
+        <!-- PostgreSQL Driver (runtime) -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
 
-
-        <!-- 6. Springdoc OpenAPI (Swagger) -->
+        <!-- Lombok (scope=compile, żeby był na classpath w czasie kompilacji) -->
         <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-ui</artifactId>
-            <version>${springdoc.version}</version>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>${lombok.version}</version>
+            <scope>compile</scope>
         </dependency>
 
-        <!-- 7. Do testów: Spring Boot Starter Test (JUnit, Mockito itd.) -->
+        <!-- JWT (io.jsonwebtoken:jjwt) -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt</artifactId>
+            <version>0.9.1</version>
+        </dependency>
+
+        <!-- Swagger/OpenAPI (Springfox 3.0.0) -->
+        <dependency>
+            <groupId>io.springfox</groupId>
+            <artifactId>springfox-boot-starter</artifactId>
+            <version>${springfox.version}</version>
+        </dependency>
+
+        <!-- Spring Boot Starter Mail -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+        <!-- Twilio SDK (SMS) -->
+        <dependency>
+            <groupId>com.twilio.sdk</groupId>
+            <artifactId>twilio</artifactId>
+            <version>8.31.1</version>
+        </dependency>
+
+        <!-- Flyway (migracje bazy) -->
+        <dependency>
+            <groupId>org.flywaydb</groupId>
+            <artifactId>flyway-core</artifactId>
+            <version>${flyway.version}</version>
+        </dependency>
+
+        <!-- Spring Boot Starter Test (JUnit, MockMvc itd.) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
 
-        <!-- 8. (opcjonalnie) Flyway, gdy będziesz dodawać migracje bazy -->
-        
+        <!-- Spring Security Test -->
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
         </dependency>
-        
     </dependencies>
 
     <build>
-        <plugins>
-            <!-- Plugin do kompilacji kodu w Java 17 -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.10.1</version>
-                <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
-                </configuration>
-            </plugin>
+    <plugins>
+        <!-- Maven Compiler Plugin -->
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-compiler-plugin</artifactId>
+            <version>${maven.compiler.plugin.version}</version>
+            <configuration>
+                <source>${java.version}</source>
+                <target>${java.version}</target>
+                <fork>true</fork>
+                <executable>${JAVA_HOME}/bin/javac</executable>
+                <annotationProcessorPaths>
+                    <path>
+                        <groupId>org.projectlombok</groupId>
+                        <artifactId>lombok</artifactId>
+                        <version>${lombok.version}</version>
+                    </path>
+                </annotationProcessorPaths>
+            </configuration>
+        </plugin>
 
-            <!-- Plugin Spring Boot -->
-            <plugin>
-                <groupId>org.springframework.boot</groupId>
-                <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>2.7.10</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>repackage</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+        <!-- Spring Boot Maven Plugin -->
+        <plugin>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-maven-plugin</artifactId>
+        </plugin>
 
-            <!-- (Opcjonalnie) JaCoCo do generowania raportu pokrycia testami -->
-            <!--
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.7</version>
-                <executions>
-                    <execution>
-                        <goals>
-                            <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>report</id>
-                        <phase>test</phase>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            -->
-        </plugins>
-    </build>
+        <!-- JaCoCo Plugin do raportowania pokrycia testów -->
+        <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>${jacoco.version}</version>
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>prepare-agent</goal>
+                    </goals>
+                </execution>
+                <execution>
+                    <id>report</id>
+                    <phase>verify</phase>
+                    <goals>
+                        <goal>report</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+
+        <!-- inne wtyczki, jeżeli są -->
+    </plugins>
+</build>
 
 </project>

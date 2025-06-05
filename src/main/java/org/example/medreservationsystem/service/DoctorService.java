@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class DoctorService {
@@ -18,23 +17,25 @@ public class DoctorService {
         this.doctorRepository = doctorRepository;
     }
 
+    public Doctor saveDoctor(Doctor doctor) {
+        return doctorRepository.save(doctor);
+    }
+
     public List<Doctor> getAllDoctors() {
         return doctorRepository.findAll();
     }
 
     public Doctor getDoctorById(Long id) {
-        Optional<Doctor> opt = doctorRepository.findById(id);
-        return opt.orElse(null);
-    }
-
-    public Doctor createDoctor(Doctor doctor) {
-        return doctorRepository.save(doctor);
+        return doctorRepository.findById(id).orElse(null);
     }
 
     public Doctor updateDoctor(Long id, Doctor doctorDetails) {
         return doctorRepository.findById(id).map(doctor -> {
-            doctor.setName(doctorDetails.getName());
+            doctor.setFirstName(doctorDetails.getFirstName());
+            doctor.setLastName(doctorDetails.getLastName());
             doctor.setSpecialization(doctorDetails.getSpecialization());
+            doctor.setEmail(doctorDetails.getEmail());
+            doctor.setPhone(doctorDetails.getPhone());
             return doctorRepository.save(doctor);
         }).orElse(null);
     }

@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/doctors")
+@RequestMapping("/doctors")
 public class DoctorController {
 
     private final DoctorService doctorService;
@@ -19,7 +19,6 @@ public class DoctorController {
         this.doctorService = doctorService;
     }
 
-    // Każdy zalogowany USER lub ADMIN może pobrać listę i szczegóły
     @GetMapping
     public List<Doctor> getAllDoctors() {
         return doctorService.getAllDoctors();
@@ -34,15 +33,17 @@ public class DoctorController {
         return ResponseEntity.ok(doctor);
     }
 
-    // Tylko ADMIN może tworzyć nowego lekarza
     @PostMapping
-    public Doctor createDoctor(@RequestBody Doctor doctor) {
-        return doctorService.createDoctor(doctor);
+    public ResponseEntity<Doctor> createDoctor(@RequestBody Doctor doctor) {
+        Doctor saved = doctorService.saveDoctor(doctor);
+        return ResponseEntity.ok(saved);
     }
 
-    // Tylko ADMIN może aktualizować lekarza
     @PutMapping("/{id}")
-    public ResponseEntity<Doctor> updateDoctor(@PathVariable Long id, @RequestBody Doctor doctorDetails) {
+    public ResponseEntity<Doctor> updateDoctor(
+            @PathVariable Long id,
+            @RequestBody Doctor doctorDetails) {
+
         Doctor updated = doctorService.updateDoctor(id, doctorDetails);
         if (updated == null) {
             return ResponseEntity.notFound().build();
@@ -50,7 +51,6 @@ public class DoctorController {
         return ResponseEntity.ok(updated);
     }
 
-    // Tylko ADMIN może usuwać lekarza
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteDoctor(@PathVariable Long id) {
         boolean deleted = doctorService.deleteDoctor(id);
