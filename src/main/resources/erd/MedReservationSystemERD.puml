@@ -1,0 +1,57 @@
+@startuml
+' File: src/main/resources/erd/MedReservationSystemERD.puml
+' ERD for Medical Reservation System
+
+entity "users" as users {
+  *id : BIGSERIAL <<PK>>
+  --
+  username : VARCHAR(50) <<UQ>>
+  email    : VARCHAR(100) <<UQ>>
+  password : VARCHAR(255) 
+}
+
+entity "user_roles" as user_roles {
+  *user_id : BIGINT      <<FK>>
+  *role    : VARCHAR(50) 
+  --
+  {PK} (user_id, role)
+}
+
+entity "doctors" as doctors {
+  *id             : BIGSERIAL <<PK>>
+  --
+  first_name      : VARCHAR(50)
+  last_name       : VARCHAR(50)
+  specialization  : VARCHAR(255)
+  phone_number    : VARCHAR(25)
+}
+
+entity "patients" as patients {
+  *id           : BIGSERIAL <<PK>>
+  --
+  first_name    : VARCHAR(50)
+  last_name     : VARCHAR(50)
+  email         : VARCHAR(100)
+  phone_number  : VARCHAR(25)
+}
+
+entity "appointments" as appointments {
+  *id                   : BIGSERIAL <<PK>>
+  --
+  appointment_date_time : TIMESTAMP
+  patient_id            : BIGINT     <<FK>>
+  doctor_id             : BIGINT     <<FK>>
+  description           : TEXT
+}
+
+' Relations
+users        ||--o{ user_roles   : "has roles"
+user_roles   }o--|| users         : "belongs to"
+
+patients     ||--o{ appointments  : "has appointments"
+appointments }o--|| patients      : "belongs to"
+
+doctors      ||--o{ appointments  : "has appointments"
+appointments }o--|| doctors       : "belongs to"
+
+@enduml
