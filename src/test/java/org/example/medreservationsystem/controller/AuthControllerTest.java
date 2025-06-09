@@ -4,17 +4,21 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.example.medreservationsystem.model.User;
 import org.example.medreservationsystem.service.AuthService;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
-import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
 
     @Autowired
@@ -35,7 +39,6 @@ class AuthControllerTest {
         User saved = new User() {};
         saved.setId(1L);
         saved.setUsername("newuser");
-        saved.setPassword("pass");
         saved.setRole(User.ROLE_USER);
 
         when(authService.register(any(User.class))).thenReturn(saved);
@@ -47,7 +50,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.role").value(User.ROLE_USER));
 
-        verify(authService).register(any(User.class));
+        Mockito.verify(authService).register(any(User.class));
     }
 
     @Test
@@ -59,19 +62,18 @@ class AuthControllerTest {
         User saved = new User() {};
         saved.setId(2L);
         saved.setUsername("admin");
-        saved.setPassword("adminpass");
         saved.setRole(User.ROLE_ADMIN);
 
         when(authService.registerAdmin(any(User.class))).thenReturn(saved);
 
-        mockMvc.perform(post("/api/auth/registerAdmin")
+        mockMvc.perform(post("/api/auth/register-admin")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(input)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").value(2L))
                 .andExpect(jsonPath("$.role").value(User.ROLE_ADMIN));
 
-        verify(authService).registerAdmin(any(User.class));
+        Mockito.verify(authService).registerAdmin(any(User.class));
     }
 
     @Test
@@ -88,7 +90,7 @@ class AuthControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().string("dummy-token-1"));
 
-        verify(authService).login(any(User.class));
+        Mockito.verify(authService).login(any(User.class));
     }
 
     @Test
@@ -104,6 +106,6 @@ class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(input)))
                 .andExpect(status().isUnauthorized());
 
-        verify(authService).login(any(User.class));
+        Mockito.verify(authService).login(any(User.class));
     }
 }

@@ -2,7 +2,7 @@ package org.example.medreservationsystem.controller;
 
 import org.example.medreservationsystem.model.User;
 import org.example.medreservationsystem.service.AuthService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,7 +12,6 @@ public class AuthController {
 
     private final AuthService authService;
 
-    @Autowired
     public AuthController(AuthService authService) {
         this.authService = authService;
     }
@@ -20,20 +19,23 @@ public class AuthController {
     @PostMapping("/register")
     public ResponseEntity<User> registerUser(@RequestBody User user) {
         User saved = authService.register(user);
-        return ResponseEntity.ok(saved);
+        // testy oczekują status 201 Created
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PostMapping("/register-admin")
     public ResponseEntity<User> registerAdmin(@RequestBody User user) {
         User saved = authService.registerAdmin(user);
-        return ResponseEntity.ok(saved);
+        // testy oczekują status 201 Created
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @PostMapping("/login")
     public ResponseEntity<String> loginUser(@RequestBody User user) {
         String token = authService.login(user);
         if (token == null) {
-            return ResponseEntity.status(401).body("Nieprawidłowe dane logowania");
+            // testy oczekują 401 Unauthorized przy niepoprawnych danych
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Nieprawidłowe dane logowania");
         }
         return ResponseEntity.ok(token);
     }

@@ -37,8 +37,6 @@ public class AppointmentService {
             appointment.setDate(appointmentDetails.getDate());
             appointment.setDoctor(appointmentDetails.getDoctor());
             appointment.setPatient(appointmentDetails.getPatient());
-            // Jeśli masz status, odkomentuj:
-//            appointment.setStatus(appointmentDetails.getStatus());
             Appointment updated = appointmentRepository.save(appointment);
             notificationService.sendNotification(updated);
             return updated;

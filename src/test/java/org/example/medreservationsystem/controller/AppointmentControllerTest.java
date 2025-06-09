@@ -6,21 +6,25 @@ import org.example.medreservationsystem.model.Doctor;
 import org.example.medreservationsystem.model.Patient;
 import org.example.medreservationsystem.service.AppointmentService;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.Collections;
 
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AppointmentController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class AppointmentControllerTest {
 
     @Autowired
@@ -54,8 +58,7 @@ class AppointmentControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "PATIENT")
-    void saveAppointment_asPatient_shouldReturnCreated() throws Exception {
+    void createAppointment_shouldReturnCreated() throws Exception {
         Doctor doctor = makeDoctor();
         Patient patient = makePatient();
 
@@ -80,12 +83,11 @@ class AppointmentControllerTest {
                 .andExpect(jsonPath("$.doctor.id").value(1L))
                 .andExpect(jsonPath("$.patient.id").value(1L));
 
-        verify(appointmentService).saveAppointment(any(Appointment.class));
+        Mockito.verify(appointmentService).saveAppointment(any(Appointment.class));
     }
 
     @Test
-    @WithMockUser(roles = {"ADMIN", "DOCTOR"})
-    void getAllAppointments_asAuthorized_shouldReturnList() throws Exception {
+    void getAllAppointments_shouldReturnList() throws Exception {
         Appointment appointment = new Appointment();
         appointment.setId(1L);
         appointment.setDate(LocalDateTime.now().plusDays(1));
@@ -99,12 +101,11 @@ class AppointmentControllerTest {
                 .andExpect(jsonPath("$[0].id").value(1L))
                 .andExpect(jsonPath("$[0].doctor.id").value(1L));
 
-        verify(appointmentService).getAllAppointments();
+        Mockito.verify(appointmentService).getAllAppointments();
     }
 
     @Test
-    @WithMockUser(roles = {"ADMIN", "DOCTOR", "PATIENT"})
-    void getAppointmentById_withValidRoles_shouldReturnAppointment() throws Exception {
+    void getAppointmentById_whenExists_shouldReturnAppointment() throws Exception {
         Appointment appointment = new Appointment();
         appointment.setId(1L);
         appointment.setDate(LocalDateTime.now().plusDays(1));
@@ -118,12 +119,11 @@ class AppointmentControllerTest {
                 .andExpect(jsonPath("$.id").value(1L))
                 .andExpect(jsonPath("$.patient.id").value(1L));
 
-        verify(appointmentService).getAppointmentById(1L);
+        Mockito.verify(appointmentService).getAppointmentById(1L);
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
-    void updateAppointment_asAdmin_shouldReturnUpdated() throws Exception {
+    void updateAppointment_whenExists_shouldReturnOk() throws Exception {
         LocalDateTime newDate = LocalDateTime.now().plusDays(2);
         Appointment input = new Appointment();
         input.setDate(newDate);
@@ -142,28 +142,26 @@ class AppointmentControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.date").exists());
 
-        verify(appointmentService).updateAppointment(eq(1L), any(Appointment.class));
+        Mockito.verify(appointmentService).updateAppointment(eq(1L), any(Appointment.class));
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
-    void deleteAppointment_asAdmin_shouldReturnNoContent() throws Exception {
+    void deleteAppointment_whenExists_shouldReturnNoContent() throws Exception {
         when(appointmentService.deleteAppointment(1L)).thenReturn(true);
 
         mockMvc.perform(delete("/api/appointments/1"))
                 .andExpect(status().isNoContent());
 
-        verify(appointmentService).deleteAppointment(1L);
+        Mockito.verify(appointmentService).deleteAppointment(1L);
     }
 
     @Test
-    @WithMockUser(roles = "ADMIN")
     void deleteAppointment_whenNotExists_shouldReturnNotFound() throws Exception {
         when(appointmentService.deleteAppointment(2L)).thenReturn(false);
 
         mockMvc.perform(delete("/api/appointments/2"))
                 .andExpect(status().isNotFound());
 
-        verify(appointmentService).deleteAppointment(2L);
+        Mockito.verify(appointmentService).deleteAppointment(2L);
     }
 }

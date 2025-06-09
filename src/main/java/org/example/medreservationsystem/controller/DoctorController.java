@@ -2,21 +2,27 @@ package org.example.medreservationsystem.controller;
 
 import org.example.medreservationsystem.model.Doctor;
 import org.example.medreservationsystem.service.DoctorService;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
-@RequestMapping("/doctors")
+@RequestMapping("/api/doctors")
 public class DoctorController {
 
     private final DoctorService doctorService;
 
-    @Autowired
     public DoctorController(DoctorService doctorService) {
         this.doctorService = doctorService;
+    }
+
+    @PostMapping
+    public ResponseEntity<Doctor> createDoctor(@RequestBody Doctor doctor) {
+        Doctor saved = doctorService.saveDoctor(doctor);
+        // testy oczekują status 201 Created
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @GetMapping
@@ -31,12 +37,6 @@ public class DoctorController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok(doctor);
-    }
-
-    @PostMapping
-    public ResponseEntity<Doctor> createDoctor(@RequestBody Doctor doctor) {
-        Doctor saved = doctorService.saveDoctor(doctor);
-        return ResponseEntity.ok(saved);
     }
 
     @PutMapping("/{id}")

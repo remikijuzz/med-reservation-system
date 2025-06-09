@@ -18,10 +18,6 @@ public class Appointment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    /**
-     * Pole z datą i godziną wizyty.
-     * Mapuje się na kolumnę "date" typu TIMESTAMP w bazie danych.
-     */
     @Column(name = "date", nullable = false)
     private LocalDateTime date;
 
@@ -33,7 +29,4 @@ public class Appointment {
     @JoinColumn(name = "patient_id", nullable = false)
     private Patient patient;
 
-    // Jeśli chcesz obsługiwać status wizyty, odkomentuj poniższe:
-    // @Column(name = "status")
-    // private String status;
 }

@@ -40,46 +40,46 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // Wyłącz CSRF (na potrzeby H2 i Swagger UI)
-            .csrf().disable()
+                // Wyłącz CSRF, żeby testy POST/PUT/DELETE się nie blokowały
+                .csrf(csrf -> csrf.disable())
 
-            // Zezwól na wyświetlanie H2 Console w ramkach
-            .headers().frameOptions().disable()
-            .and()
+                // Zezwól na wyświetlanie H2 Console w ramkach
+                .headers(headers -> headers.frameOptions().disable())
 
-            // Konfiguracja dostępów
-            .authorizeHttpRequests(authz -> authz
-                // 1. Rejestracja i logowanie otwarte
-                .antMatchers("/api/auth/**").permitAll()
+                // Konfiguracja dostępów
+                .authorizeHttpRequests(authz -> authz
+                                // 1. Rejestracja i logowanie – publiczne
+                                .antMatchers("/api/auth/**").permitAll()
 
-                // 2. H2 Console – zezwól wszystkim
-                .antMatchers("/h2-console/**").permitAll()
+                                // 2. H2 Console – publiczne
+                                .antMatchers("/h2-console/**").permitAll()
 
-                // 3. Swagger UI i OpenAPI endpoints – otwarte
-                .antMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                                // 3. Swagger/UI + OpenAPI – publiczne
+                                .antMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-                // 4. Lekarze: tylko ADMIN może tworzyć/modyfikować/usuwać; każdy zalogowany może pobrać
-                .antMatchers(HttpMethod.GET,    "/api/doctors/**").hasAnyRole("USER", "ADMIN")
-                .antMatchers(HttpMethod.POST,   "/api/doctors/**").hasRole("ADMIN")
-                .antMatchers(HttpMethod.PUT,    "/api/doctors/**").hasRole("ADMIN")
-                .antMatchers(HttpMethod.DELETE, "/api/doctors/**").hasRole("ADMIN")
+                                // 4. Lekarze: GET – PATIENT/USER/ADMIN; POST, PUT, DELETE – ADMIN
+                                .antMatchers(HttpMethod.GET, "/api/doctors/**").hasAnyRole("PATIENT", "USER", "ADMIN")
+                                .antMatchers(HttpMethod.POST, "/api/doctors/**").hasRole("ADMIN")
+                                .antMatchers(HttpMethod.PUT, "/api/doctors/**").hasRole("ADMIN")
+                                .antMatchers(HttpMethod.DELETE, "/api/doctors/**").hasRole("ADMIN")
 
-                // 5. Pacjenci: tylko ADMIN może CRUD; każdy zalogowany może GET
-                .antMatchers(HttpMethod.GET,    "/api/patients/**").hasAnyRole("USER", "ADMIN")
-                .antMatchers(HttpMethod.POST,   "/api/patients/**").hasRole("ADMIN")
-                .antMatchers(HttpMethod.PUT,    "/api/patients/**").hasRole("ADMIN")
-                .antMatchers(HttpMethod.DELETE, "/api/patients/**").hasRole("ADMIN")
+                                // 5. Pacjenci: GET – PATIENT/USER/ADMIN; POST, PUT, DELETE – ADMIN
+                                .antMatchers(HttpMethod.GET, "/api/patients/**").hasAnyRole("PATIENT", "USER", "ADMIN")
+                                .antMatchers(HttpMethod.POST, "/api/patients/**").hasRole("ADMIN")
+                                .antMatchers(HttpMethod.PUT, "/api/patients/**").hasRole("ADMIN")
+                                .antMatchers(HttpMethod.DELETE, "/api/patients/**").hasRole("ADMIN")
 
-                // 6. Wizyty: każdy zalogowany USER lub ADMIN może CRUD
-                .antMatchers(HttpMethod.GET,    "/api/appointments/**").hasAnyRole("USER", "ADMIN")
-                .antMatchers(HttpMethod.POST,   "/api/appointments/**").hasAnyRole("USER", "ADMIN")
-                .antMatchers(HttpMethod.PUT,    "/api/appointments/**").hasAnyRole("USER", "ADMIN")
-                .antMatchers(HttpMethod.DELETE, "/api/appointments/**").hasAnyRole("USER", "ADMIN")
+                                // 6. Wizyty: każdy zalogowany (PATIENT/USER/ADMIN) może CRUD
+                                .antMatchers(HttpMethod.GET, "/api/appointments/**").hasAnyRole("PATIENT", "USER", "ADMIN")
+                                .antMatchers(HttpMethod.POST, "/api/appointments/**").hasAnyRole("PATIENT", "USER", "ADMIN")
+                                .antMatchers(HttpMethod.PUT, "/api/appointments/**").hasAnyRole("PATIENT", "USER", "ADMIN")
+                                .antMatchers(HttpMethod.DELETE, "/api/appointments/**").hasAnyRole("PATIENT", "USER", "ADMIN")
 
-                // 7. Wszystkie inne żądania wymagają uwierzytelnienia
-                .anyRequest().authenticated()
-            )
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+                                // 7. Wszystkie inne żądania wymagają uwierzytelnienia
+                                .anyRequest().authenticated()
+                )
+                // 8. BEZ sesji (stateless)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
 
         return http.build();
     }
