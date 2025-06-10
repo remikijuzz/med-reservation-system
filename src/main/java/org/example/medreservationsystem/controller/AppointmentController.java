@@ -1,11 +1,13 @@
 package org.example.medreservationsystem.controller;
 
+import org.example.medreservationsystem.dto.AppointmentRequest;
 import org.example.medreservationsystem.model.Appointment;
 import org.example.medreservationsystem.service.AppointmentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -18,6 +20,15 @@ public class AppointmentController {
         this.appointmentService = appointmentService;
     }
 
+    @PostMapping
+    public ResponseEntity<Appointment> createAppointment(
+            @Valid @RequestBody AppointmentRequest req) {
+        Appointment saved = appointmentService.createAppointment(
+                req.getPatientId(), req.getDoctorId(),
+                req.getAppointmentDateTime(), req.getDescription());
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
     @GetMapping
     public List<Appointment> getAllAppointments() {
         return appointmentService.getAllAppointments();
@@ -25,26 +36,20 @@ public class AppointmentController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Appointment> getAppointmentById(@PathVariable Long id) {
-        Appointment appointment = appointmentService.getAppointmentById(id);
-        if (appointment == null) {
+        Appointment appt = appointmentService.getAppointmentById(id);
+        if (appt == null) {
             return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.ok(appointment);
-    }
-
-    @PostMapping
-    public ResponseEntity<Appointment> createAppointment(@RequestBody Appointment appointment) {
-        Appointment saved = appointmentService.saveAppointment(appointment);
-        // testy oczekują status 201 Created
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        return ResponseEntity.ok(appt);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Appointment> updateAppointment(
             @PathVariable Long id,
-            @RequestBody Appointment appointmentDetails) {
-
-        Appointment updated = appointmentService.updateAppointment(id, appointmentDetails);
+            @Valid @RequestBody AppointmentRequest req) {
+        Appointment updated = appointmentService.updateAppointment(
+                id, req.getPatientId(), req.getDoctorId(),
+                req.getAppointmentDateTime(), req.getDescription());
         if (updated == null) {
             return ResponseEntity.notFound().build();
         }
@@ -58,5 +63,15 @@ public class AppointmentController {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/patient/{patientId}")
+    public List<Appointment> getByPatient(@PathVariable Long patientId) {
+        return appointmentService.getAppointmentsByPatient(patientId);
+    }
+
+    @GetMapping("/doctor/{doctorId}")
+    public List<Appointment> getByDoctor(@PathVariable Long doctorId) {
+        return appointmentService.getAppointmentsByDoctor(doctorId);
     }
 }

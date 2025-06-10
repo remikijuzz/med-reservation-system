@@ -1,5 +1,6 @@
 package org.example.medreservationsystem.config;
 
+import org.example.medreservationsystem.security.JwtAuthenticationFilter;
 import org.example.medreservationsystem.service.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,15 +14,24 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 @EnableGlobalMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomUserDetailsService userDetailsService;
 
-    public SecurityConfig(CustomUserDetailsService userDetailsService) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          CustomUserDetailsService userDetailsService) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
         this.userDetailsService = userDetailsService;
     }
 
@@ -32,55 +42,66 @@ public class SecurityConfig {
 
     @Bean
     public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
-        AuthenticationManagerBuilder auth = http.getSharedObject(AuthenticationManagerBuilder.class);
-        auth.userDetailsService(userDetailsService).passwordEncoder(passwordEncoder());
-        return auth.build();
+        AuthenticationManagerBuilder authBuilder =
+            http.getSharedObject(AuthenticationManagerBuilder.class);
+        authBuilder
+            .userDetailsService(userDetailsService)
+            .passwordEncoder(passwordEncoder());
+        return authBuilder.build();
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // Wyłącz CSRF, żeby testy POST/PUT/DELETE się nie blokowały
-                .csrf(csrf -> csrf.disable())
-
-                // Zezwól na wyświetlanie H2 Console w ramkach
-                .headers(headers -> headers.frameOptions().disable())
-
-                // Konfiguracja dostępów
-                .authorizeHttpRequests(authz -> authz
-                                // 1. Rejestracja i logowanie – publiczne
-                                .antMatchers("/api/auth/**").permitAll()
-
-                                // 2. H2 Console – publiczne
-                                .antMatchers("/h2-console/**").permitAll()
-
-                                // 3. Swagger/UI + OpenAPI – publiczne
-                                .antMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-
-                                // 4. Lekarze: GET – PATIENT/USER/ADMIN; POST, PUT, DELETE – ADMIN
-                                .antMatchers(HttpMethod.GET, "/api/doctors/**").hasAnyRole("PATIENT", "USER", "ADMIN")
-                                .antMatchers(HttpMethod.POST, "/api/doctors/**").hasRole("ADMIN")
-                                .antMatchers(HttpMethod.PUT, "/api/doctors/**").hasRole("ADMIN")
-                                .antMatchers(HttpMethod.DELETE, "/api/doctors/**").hasRole("ADMIN")
-
-                                // 5. Pacjenci: GET – PATIENT/USER/ADMIN; POST, PUT, DELETE – ADMIN
-                                .antMatchers(HttpMethod.GET, "/api/patients/**").hasAnyRole("PATIENT", "USER", "ADMIN")
-                                .antMatchers(HttpMethod.POST, "/api/patients/**").hasRole("ADMIN")
-                                .antMatchers(HttpMethod.PUT, "/api/patients/**").hasRole("ADMIN")
-                                .antMatchers(HttpMethod.DELETE, "/api/patients/**").hasRole("ADMIN")
-
-                                // 6. Wizyty: każdy zalogowany (PATIENT/USER/ADMIN) może CRUD
-                                .antMatchers(HttpMethod.GET, "/api/appointments/**").hasAnyRole("PATIENT", "USER", "ADMIN")
-                                .antMatchers(HttpMethod.POST, "/api/appointments/**").hasAnyRole("PATIENT", "USER", "ADMIN")
-                                .antMatchers(HttpMethod.PUT, "/api/appointments/**").hasAnyRole("PATIENT", "USER", "ADMIN")
-                                .antMatchers(HttpMethod.DELETE, "/api/appointments/**").hasAnyRole("PATIENT", "USER", "ADMIN")
-
-                                // 7. Wszystkie inne żądania wymagają uwierzytelnienia
-                                .anyRequest().authenticated()
-                )
-                // 8. BEZ sesji (stateless)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
+            // 1) Włączamy CORS
+            .cors()
+        .and()
+            // 2) Wyłączamy CSRF (bo JWT stateless)
+            .csrf().disable()
+            .headers().frameOptions().disable()
+        .and()
+            // 3) Stateless session
+            .sessionManagement()
+               .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+        .and()
+            // 4) Reguły dostępu, włącznie z permitAll OPTIONS
+            .authorizeRequests()
+               .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()    // pozwól na preflight
+               .antMatchers(
+                   "/api/auth/**",
+                   "/swagger-ui.html",
+                   "/swagger-ui/**",
+                   "/v3/api-docs/**",
+                   "/swagger-resources/**",
+                   "/webjars/**"
+               ).permitAll()
+               .antMatchers(HttpMethod.POST,   "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
+               .antMatchers(HttpMethod.PUT,    "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
+               .antMatchers(HttpMethod.DELETE, "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
+               .antMatchers(HttpMethod.GET,    "/api/doctors/**", "/api/patients/**")
+                   .hasAnyRole("USER","ADMIN","DOCTOR","PATIENT")
+               .antMatchers("/api/appointments/**").authenticated()
+               .anyRequest().authenticated()
+        .and()
+            // 5) Nasz JWT-filter
+            .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
+    }
+
+    /**
+     * Definicja globalnej polityki CORS – pozwalamy na Authorization i Content-Type
+     */
+    @Bean
+    CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(List.of("*")); // możesz zawęzić do własnej domeny
+        config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization","Content-Type"));
+        config.setAllowCredentials(true);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", config);
+        return source;
     }
 }

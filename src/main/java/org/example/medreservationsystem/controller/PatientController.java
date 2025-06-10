@@ -1,11 +1,13 @@
 package org.example.medreservationsystem.controller;
 
+import org.example.medreservationsystem.dto.PatientRequest;
 import org.example.medreservationsystem.model.Patient;
 import org.example.medreservationsystem.service.PatientService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.validation.Valid;
 import java.util.List;
 
 @RestController
@@ -19,15 +21,27 @@ public class PatientController {
     }
 
     @PostMapping
-    public ResponseEntity<Patient> createPatient(@RequestBody Patient patient) {
-        Patient saved = patientService.savePatient(patient);
-        // testy oczekują status 201 Created
+    public ResponseEntity<Patient> createPatient(@Valid @RequestBody PatientRequest req) {
+        Patient p = new Patient();
+        p.setUsername(req.getUsername());
+        p.setEmail(req.getEmail());
+        p.setPassword(req.getPassword());
+        p.setFirstName(req.getFirstName());
+        p.setLastName(req.getLastName());
+        p.setPhoneNumber(req.getPhoneNumber());
+        if (req.getNotificationChannel() != null) {
+            p.setNotificationChannel(req.getNotificationChannel());
+        }
+        Patient saved = patientService.savePatient(p);
+        saved.setPassword(null);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @GetMapping
     public List<Patient> getAllPatients() {
-        return patientService.getAllPatients();
+        List<Patient> list = patientService.getAllPatients();
+        list.forEach(p -> p.setPassword(null));
+        return list;
     }
 
     @GetMapping("/{id}")
@@ -36,18 +50,28 @@ public class PatientController {
         if (patient == null) {
             return ResponseEntity.notFound().build();
         }
+        patient.setPassword(null);
         return ResponseEntity.ok(patient);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Patient> updatePatient(
             @PathVariable Long id,
-            @RequestBody Patient patientDetails) {
-
-        Patient updated = patientService.updatePatient(id, patientDetails);
+            @Valid @RequestBody PatientRequest req) {
+        Patient details = new Patient();
+        details.setEmail(req.getEmail());
+        details.setPassword(req.getPassword());
+        details.setFirstName(req.getFirstName());
+        details.setLastName(req.getLastName());
+        details.setPhoneNumber(req.getPhoneNumber());
+        if (req.getNotificationChannel() != null) {
+            details.setNotificationChannel(req.getNotificationChannel());
+        }
+        Patient updated = patientService.updatePatient(id, details);
         if (updated == null) {
             return ResponseEntity.notFound().build();
         }
+        updated.setPassword(null);
         return ResponseEntity.ok(updated);
     }
 

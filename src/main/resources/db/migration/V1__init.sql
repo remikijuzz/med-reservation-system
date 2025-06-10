@@ -1,16 +1,17 @@
--- V1__init.sql
--- Inicjalizacja schematu bazy danych dla Med Reservation System
+-- src/main/resources/db/migration/V1__init.sql
 
--- 1. Tabela users
-CREATE TABLE users (
+-- 1. Tabela users z kolumną dtype i notification_channel
+CREATE TABLE IF NOT EXISTS users (
     id BIGSERIAL PRIMARY KEY,
     username VARCHAR(50) NOT NULL UNIQUE,
     email VARCHAR(100) NOT NULL UNIQUE,
-    password VARCHAR(255) NOT NULL
+    password VARCHAR(255) NOT NULL,
+    dtype VARCHAR(31) NOT NULL,
+    notification_channel VARCHAR(20) NOT NULL DEFAULT 'EMAIL'
 );
 
--- 2. Tabela user_roles (ElementCollection w encji User)
-CREATE TABLE user_roles (
+-- 2. Tabela user_roles
+CREATE TABLE IF NOT EXISTS user_roles (
     user_id BIGINT NOT NULL,
     role VARCHAR(50) NOT NULL,
     CONSTRAINT fk_user_roles_user
@@ -20,25 +21,32 @@ CREATE TABLE user_roles (
 );
 
 -- 3. Tabela doctors
-CREATE TABLE doctors (
-    id BIGSERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS doctors (
+    id BIGINT PRIMARY KEY,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
     specialization VARCHAR(255) NOT NULL,
-    phone_number VARCHAR(25) NOT NULL
+    phone_number VARCHAR(25) NOT NULL,
+    CONSTRAINT fk_doctors_user
+        FOREIGN KEY (id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
 );
 
 -- 4. Tabela patients
-CREATE TABLE patients (
-    id BIGSERIAL PRIMARY KEY,
+CREATE TABLE IF NOT EXISTS patients (
+    id BIGINT PRIMARY KEY,
     first_name VARCHAR(50) NOT NULL,
     last_name VARCHAR(50) NOT NULL,
-    email VARCHAR(100) NOT NULL,
-    phone_number VARCHAR(25) NOT NULL
+    phone_number VARCHAR(25) NOT NULL,
+    CONSTRAINT fk_patients_user
+        FOREIGN KEY (id)
+        REFERENCES users(id)
+        ON DELETE CASCADE
 );
 
 -- 5. Tabela appointments
-CREATE TABLE appointments (
+CREATE TABLE IF NOT EXISTS appointments (
     id BIGSERIAL PRIMARY KEY,
     appointment_date_time TIMESTAMP NOT NULL,
     patient_id BIGINT NOT NULL,

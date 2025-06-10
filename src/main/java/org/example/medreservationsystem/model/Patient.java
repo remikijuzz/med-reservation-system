@@ -7,7 +7,9 @@ import lombok.NoArgsConstructor;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "patient")
+@Table(name = "patients")
+@DiscriminatorValue("Patient")
+@PrimaryKeyJoinColumn(name = "id")
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -19,8 +21,21 @@ public class Patient extends User {
     @Column(name = "last_name", nullable = false)
     private String lastName;
 
-    @Column(unique = true)
-    private String email;
+    @Column(name = "phone_number", nullable = false)
+    private String phoneNumber;
 
-    private String phone;
+    // Konstruktor pomocniczy (opcjonalnie)
+    public Patient(String username, String email, String password,
+                   String firstName, String lastName, String phoneNumber,
+                   NotificationChannel notificationChannel) {
+        super();
+        setUsername(username);
+        setEmail(email);
+        setPassword(password);
+        getRoles().add(User.ROLE_PATIENT);
+        setNotificationChannel(notificationChannel);
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.phoneNumber = phoneNumber;
+    }
 }
