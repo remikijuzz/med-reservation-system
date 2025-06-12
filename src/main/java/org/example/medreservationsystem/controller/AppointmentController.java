@@ -24,7 +24,7 @@ public class AppointmentController {
     public AppointmentController(AppointmentService appointmentService,
                                  UserRepository userRepository) {
         this.appointmentService = appointmentService;
-        this.userRepository = userRepository;
+        this.userRepository    = userRepository;
     }
 
     @PostMapping
@@ -40,6 +40,7 @@ public class AppointmentController {
 
     @GetMapping
     public ResponseEntity<List<Appointment>> getAllAppointments() {
+        // tylko ADMIN (już sprawdzone w SecurityConfig)
         return ResponseEntity.ok(appointmentService.getAllAppointments());
     }
 
@@ -51,12 +52,25 @@ public class AppointmentController {
         }
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAdminOrDoctor = auth.getAuthorities().stream()
-            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
-                        || a.getAuthority().equals("ROLE_DOCTOR"));
         String username = auth.getName();
-        if (!isAdminOrDoctor
-            && !appt.getPatient().getUsername().equals(username)) {
+        boolean isAdmin = auth.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        boolean isDoctor = auth.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_DOCTOR"));
+        boolean isPatient = auth.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_PATIENT"));
+
+        if (isAdmin) {
+            // admin widzi wszystko
+        } else if (isDoctor) {
+            if (!appt.getDoctor().getUsername().equals(username)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } else if (isPatient) {
+            if (!appt.getPatient().getUsername().equals(username)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        } else {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -71,12 +85,11 @@ public class AppointmentController {
         if (existing == null) {
             return ResponseEntity.notFound().build();
         }
-
+        // tylko PACIENT może aktualizować swoją wizytę
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         if (!existing.getPatient().getUsername().equals(username)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-
         Appointment updated = appointmentService.updateAppointment(
                 id,
                 req.getPatientId(),
@@ -97,6 +110,7 @@ public class AppointmentController {
         boolean isAdmin = auth.getAuthorities().stream()
             .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
         String username = auth.getName();
+
         if (!isAdmin && !existing.getPatient().getUsername().equals(username)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
@@ -108,13 +122,13 @@ public class AppointmentController {
     @GetMapping("/patient/{patientId}")
     public ResponseEntity<List<Appointment>> getByPatient(@PathVariable Long patientId) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
         boolean isAdminOrDoctor = auth.getAuthorities().stream()
             .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
                         || a.getAuthority().equals("ROLE_DOCTOR"));
         if (!isAdminOrDoctor) {
-            String username = auth.getName();
             User user = userRepository.findByUsername(username);
-            if (!user.getId().equals(patientId)) {
+            if (user == null || !user.getId().equals(patientId)) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
         }
@@ -123,6 +137,27 @@ public class AppointmentController {
 
     @GetMapping("/doctor/{doctorId}")
     public ResponseEntity<List<Appointment>> getByDoctor(@PathVariable Long doctorId) {
-        return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorId));
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        boolean isAdmin = auth.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        boolean isDoctor = auth.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_DOCTOR"));
+
+        if (isAdmin) {
+            // admin widzi wszystkie
+            return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorId));
+        }
+
+        if (isDoctor) {
+            User user = userRepository.findByUsername(username);
+            if (user == null || !user.getId().equals(doctorId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorId));
+        }
+
+        // pozostali nie mają dostępu
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 }

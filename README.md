@@ -139,61 +139,7 @@ VALUES
 ```sql
 ````
 
-#### B. Rejestracja użytkownika, logowanie i dostęp do endpointów dla zwykłego użytkownika.
-
-1. **Rejestracja nowego użytkownika (ROLE_USER):**  
-   * AuthController → `POST /api/auth/register`  
-   * Kliknij **Try it out** i wklej:
-
-     ```json
-     {
-       "username": "user3",
-       "email":    "user3@example.com",
-       "password": "pass3",
-       "notificationChannel": "EMAIL"
-     }
-     ```
-   * Kliknij **Execute** → otrzymasz `201 Created` i obiekt `User` z wygenerowanym `id`.
-
-2. **Logowanie użytkownika:**  
-   * AuthController → `POST /api/auth/login`  
-   * Kliknij **Try it out** i wklej:
-
-     ```json
-     {
-       "username": "user3",
-       "password": "pass3"
-     }
-     ```
-   * Kliknij **Execute** → w odpowiedzi:
-
-     ```json
-     {
-       "token": "<JWT_TOKEN_USER>"
-     }
-     ```
-
-3. **Ustawienie tokena użytkownika w Swagger UI:**  
-   * Kliknij **Authorize** (ikonka kłódki) w prawym górnym rogu.  
-   * W polu **Value** wpisz:
-
-     ```
-     <JWT_TOKEN_USER>
-     ```
-   * Kliknij **Authorize** → teraz wszystkie żądania będą wysyłane jako zalogowany użytkownik.
-
-4. **Dostępne endpointy dla zwykłego użytkownika (ROLE_USER):**  
-   * `GET    /api/doctors`                    – lista lekarzy  
-   * `GET    /api/patients`                   – lista pacjentów  
-   * `GET    /api/appointments`               – wszystkie wizyty  
-   * `POST   /api/appointments`               – tworzenie nowej wizyty  
-   * `PUT    /api/appointments/{id}`          – aktualizacja swojej wizyty  
-   * `DELETE /api/appointments/{id}`          – usunięcie swojej wizyty  
-   * `GET    /api/appointments/patient/{id}`  – wizyty danego pacjenta (własne)  
-   * `GET    /api/appointments/doctor/{id}`   – wizyty przypisane do lekarza
-
-
-#### C. Rejestracja, logowanie i dostęp do endpointów dla administratora. 
+#### B. Rejestracja, logowanie i dostęp do endpointów dla administratora. 
 
 1. **Rejestracja administratora (ROLE\_ADMIN):**
 
@@ -252,7 +198,7 @@ VALUES
      * `DELETE /api/patients/{id}`     – usuwa pacjenta o podanym `id`  
 
 
-#### D. Rejestracja pacjenta, logowanie i dodawanie wizyty
+#### C. Rejestracja pacjenta, logowanie i dodawanie wizyty
 
 1. **Rejestracja nowego pacjenta (ROLE_PATIENT)**  
    * AuthController → `POST /api/auth/register/patient?firstName={firstName}&lastName={lastName}&phoneNumber={phone}`  
@@ -314,7 +260,7 @@ VALUES
    * `PUT  /api/appointments/{id}`              – aktualizacja wizyty  
    * `DELETE /api/appointments/{id}`             – usunięcie wizyty  
 
-#### E. Rejestracja lekarza, logowanie i przeglądanie wizyt
+#### D. Rejestracja lekarza, logowanie i przeglądanie wizyt
 
 1. **Rejestracja nowego lekarza (ROLE_DOCTOR)**  
    * AuthController → `POST /api/auth/register/doctor?firstName={firstName}&lastName={lastName}&specialization={spec}&phoneNumber={phone}`  

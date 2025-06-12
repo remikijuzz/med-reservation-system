@@ -60,7 +60,7 @@ public class SecurityConfig {
                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
             .authorizeRequests()
-               // publiczne
+               // public
                .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                .antMatchers(
                    "/api/auth/**",
@@ -69,32 +69,35 @@ public class SecurityConfig {
                    "/webjars/**"
                ).permitAll()
 
-               // ADMIN only: CRUD lekarzy & pacjentów
+               // ADMIN: CRUD doctors & patients
                .antMatchers(HttpMethod.POST,   "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
                .antMatchers(HttpMethod.PUT,    "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
                .antMatchers(HttpMethod.DELETE, "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
 
-               // wszyscy zalogowani mogą GET doctors & patients
+               // any authenticated: list doctors & patients
                .antMatchers(HttpMethod.GET, "/api/doctors/**", "/api/patients/**")
                   .hasAnyRole("USER","ADMIN","DOCTOR","PATIENT")
 
-               // Appointment: listowanie własne pacjenta
+               // APPOINTMENTS
+               // - full list only for ADMIN
+               .antMatchers(HttpMethod.GET, "/api/appointments").hasRole("ADMIN")
+
+               // - list by patient: PATIENT(own), DOCTOR(own), ADMIN
                .antMatchers(HttpMethod.GET, "/api/appointments/patient/**")
                   .hasAnyRole("PATIENT","DOCTOR","ADMIN")
-               // Appointment: listowanie przez lekarza/admina
+               // - list by doctor: DOCTOR(own), ADMIN
                .antMatchers(HttpMethod.GET, "/api/appointments/doctor/**")
                   .hasAnyRole("DOCTOR","ADMIN")
-               // Appointment: pełna lista tylko dla doctor/admin
-               .antMatchers(HttpMethod.GET, "/api/appointments").hasAnyRole("DOCTOR","ADMIN")
-               // pojedyncza wizyta — PATIENT (własna), DOCTOR, ADMIN
+               // - single appointment: PATIENT(own), DOCTOR(own), ADMIN
                .antMatchers(HttpMethod.GET, "/api/appointments/*")
                   .hasAnyRole("PATIENT","DOCTOR","ADMIN")
 
-               // Appointment: tworzenie tylko PACIENT
-               .antMatchers(HttpMethod.POST, "/api/appointments").hasRole("PATIENT")
-               // aktualizacja tylko PACIENT
+               // - create appointment: now PATIENT and DOCTOR
+               .antMatchers(HttpMethod.POST, "/api/appointments")
+                  .hasAnyRole("PATIENT","DOCTOR")
+               // - update: only PATIENT
                .antMatchers(HttpMethod.PUT,    "/api/appointments/*").hasRole("PATIENT")
-               // usuwanie dla PACIENT i ADMIN
+               // - delete: PATIENT(own), ADMIN
                .antMatchers(HttpMethod.DELETE, "/api/appointments/*")
                   .hasAnyRole("PATIENT","ADMIN")
 
