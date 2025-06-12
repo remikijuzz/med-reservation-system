@@ -1,4 +1,3 @@
-// src/main/java/org/example/medreservationsystem/config/SecurityConfig.java
 package org.example.medreservationsystem.config;
 
 import org.example.medreservationsystem.security.JwtAuthenticationFilter;
@@ -61,34 +60,43 @@ public class SecurityConfig {
                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             .and()
             .authorizeRequests()
+               // publiczne
                .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                .antMatchers(
                    "/api/auth/**",
-                   "/swagger-ui.html",
-                   "/swagger-ui/**",
-                   "/v3/api-docs/**",
-                   "/swagger-resources/**",
+                   "/swagger-ui.html", "/swagger-ui/**",
+                   "/v3/api-docs/**", "/swagger-resources/**",
                    "/webjars/**"
                ).permitAll()
 
-               // ADMIN-only for doctor/patient CRUD
+               // ADMIN only: CRUD lekarzy & pacjentów
                .antMatchers(HttpMethod.POST,   "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
                .antMatchers(HttpMethod.PUT,    "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
                .antMatchers(HttpMethod.DELETE, "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
 
-               // all authenticated roles can list doctors/patients
+               // wszyscy zalogowani mogą GET doctors & patients
                .antMatchers(HttpMethod.GET, "/api/doctors/**", "/api/patients/**")
-                   .hasAnyRole("USER","ADMIN","DOCTOR","PATIENT")
+                  .hasAnyRole("USER","ADMIN","DOCTOR","PATIENT")
 
-               // Appointments: fine-grained rules
-               .antMatchers(HttpMethod.GET,  "/api/appointments/patient/**").hasAnyRole("PATIENT","DOCTOR","ADMIN")
-               .antMatchers(HttpMethod.GET,  "/api/appointments/doctor/**").hasAnyRole("DOCTOR","ADMIN")
-               .antMatchers(HttpMethod.GET,  "/api/appointments").hasAnyRole("DOCTOR","ADMIN")
-               .antMatchers(HttpMethod.GET,  "/api/appointments/*").hasAnyRole("DOCTOR","ADMIN")
+               // Appointment: listowanie własne pacjenta
+               .antMatchers(HttpMethod.GET, "/api/appointments/patient/**")
+                  .hasAnyRole("PATIENT","DOCTOR","ADMIN")
+               // Appointment: listowanie przez lekarza/admina
+               .antMatchers(HttpMethod.GET, "/api/appointments/doctor/**")
+                  .hasAnyRole("DOCTOR","ADMIN")
+               // Appointment: pełna lista tylko dla doctor/admin
+               .antMatchers(HttpMethod.GET, "/api/appointments").hasAnyRole("DOCTOR","ADMIN")
+               // pojedyncza wizyta — PATIENT (własna), DOCTOR, ADMIN
+               .antMatchers(HttpMethod.GET, "/api/appointments/*")
+                  .hasAnyRole("PATIENT","DOCTOR","ADMIN")
 
-               .antMatchers(HttpMethod.POST,   "/api/appointments").hasRole("PATIENT")
+               // Appointment: tworzenie tylko PACIENT
+               .antMatchers(HttpMethod.POST, "/api/appointments").hasRole("PATIENT")
+               // aktualizacja tylko PACIENT
                .antMatchers(HttpMethod.PUT,    "/api/appointments/*").hasRole("PATIENT")
-               .antMatchers(HttpMethod.DELETE, "/api/appointments/*").hasRole("PATIENT")
+               // usuwanie dla PACIENT i ADMIN
+               .antMatchers(HttpMethod.DELETE, "/api/appointments/*")
+                  .hasAnyRole("PATIENT","ADMIN")
 
                .anyRequest().authenticated()
             .and()

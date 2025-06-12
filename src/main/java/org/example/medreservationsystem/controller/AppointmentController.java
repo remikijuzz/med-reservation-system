@@ -1,4 +1,3 @@
-// src/main/java/org/example/medreservationsystem/controller/AppointmentController.java
 package org.example.medreservationsystem.controller;
 
 import org.example.medreservationsystem.dto.AppointmentRequest;
@@ -41,7 +40,6 @@ public class AppointmentController {
 
     @GetMapping
     public ResponseEntity<List<Appointment>> getAllAppointments() {
-        // only DOCTOR or ADMIN reach this point per SecurityConfig
         return ResponseEntity.ok(appointmentService.getAllAppointments());
     }
 
@@ -51,16 +49,17 @@ public class AppointmentController {
         if (appt == null) {
             return ResponseEntity.notFound().build();
         }
+
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         boolean isAdminOrDoctor = auth.getAuthorities().stream()
             .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
                         || a.getAuthority().equals("ROLE_DOCTOR"));
-        if (!isAdminOrDoctor) {
-            String username = auth.getName();
-            if (!appt.getPatient().getUsername().equals(username)) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-            }
+        String username = auth.getName();
+        if (!isAdminOrDoctor
+            && !appt.getPatient().getUsername().equals(username)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
+
         return ResponseEntity.ok(appt);
     }
 
@@ -72,11 +71,12 @@ public class AppointmentController {
         if (existing == null) {
             return ResponseEntity.notFound().build();
         }
-        String username = SecurityContextHolder.getContext()
-                             .getAuthentication().getName();
+
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
         if (!existing.getPatient().getUsername().equals(username)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
+
         Appointment updated = appointmentService.updateAppointment(
                 id,
                 req.getPatientId(),
@@ -92,11 +92,15 @@ public class AppointmentController {
         if (existing == null) {
             return ResponseEntity.notFound().build();
         }
-        String username = SecurityContextHolder.getContext()
-                             .getAuthentication().getName();
-        if (!existing.getPatient().getUsername().equals(username)) {
+
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdmin = auth.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+        String username = auth.getName();
+        if (!isAdmin && !existing.getPatient().getUsername().equals(username)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
+
         appointmentService.deleteAppointment(id);
         return ResponseEntity.noContent().build();
     }
@@ -114,13 +118,11 @@ public class AppointmentController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
         }
-        List<Appointment> list = appointmentService.getAppointmentsByPatient(patientId);
-        return ResponseEntity.ok(list);
+        return ResponseEntity.ok(appointmentService.getAppointmentsByPatient(patientId));
     }
 
     @GetMapping("/doctor/{doctorId}")
     public ResponseEntity<List<Appointment>> getByDoctor(@PathVariable Long doctorId) {
-        // only DOCTOR or ADMIN per SecurityConfig
         return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorId));
     }
 }
