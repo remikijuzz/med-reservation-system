@@ -1,10 +1,15 @@
+// src/main/java/org/example/medreservationsystem/controller/AppointmentController.java
 package org.example.medreservationsystem.controller;
 
 import org.example.medreservationsystem.dto.AppointmentRequest;
 import org.example.medreservationsystem.model.Appointment;
+import org.example.medreservationsystem.model.User;
+import org.example.medreservationsystem.repository.UserRepository;
 import org.example.medreservationsystem.service.AppointmentService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
@@ -15,23 +20,29 @@ import java.util.List;
 public class AppointmentController {
 
     private final AppointmentService appointmentService;
+    private final UserRepository    userRepository;
 
-    public AppointmentController(AppointmentService appointmentService) {
+    public AppointmentController(AppointmentService appointmentService,
+                                 UserRepository userRepository) {
         this.appointmentService = appointmentService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping
     public ResponseEntity<Appointment> createAppointment(
             @Valid @RequestBody AppointmentRequest req) {
         Appointment saved = appointmentService.createAppointment(
-                req.getPatientId(), req.getDoctorId(),
-                req.getAppointmentDateTime(), req.getDescription());
+                req.getPatientId(),
+                req.getDoctorId(),
+                req.getAppointmentDateTime(),
+                req.getDescription());
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
     @GetMapping
-    public List<Appointment> getAllAppointments() {
-        return appointmentService.getAllAppointments();
+    public ResponseEntity<List<Appointment>> getAllAppointments() {
+        // only DOCTOR or ADMIN reach this point per SecurityConfig
+        return ResponseEntity.ok(appointmentService.getAllAppointments());
     }
 
     @GetMapping("/{id}")
@@ -40,6 +51,16 @@ public class AppointmentController {
         if (appt == null) {
             return ResponseEntity.notFound().build();
         }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdminOrDoctor = auth.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
+                        || a.getAuthority().equals("ROLE_DOCTOR"));
+        if (!isAdminOrDoctor) {
+            String username = auth.getName();
+            if (!appt.getPatient().getUsername().equals(username)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
         return ResponseEntity.ok(appt);
     }
 
@@ -47,31 +68,59 @@ public class AppointmentController {
     public ResponseEntity<Appointment> updateAppointment(
             @PathVariable Long id,
             @Valid @RequestBody AppointmentRequest req) {
-        Appointment updated = appointmentService.updateAppointment(
-                id, req.getPatientId(), req.getDoctorId(),
-                req.getAppointmentDateTime(), req.getDescription());
-        if (updated == null) {
+        Appointment existing = appointmentService.getAppointmentById(id);
+        if (existing == null) {
             return ResponseEntity.notFound().build();
         }
+        String username = SecurityContextHolder.getContext()
+                             .getAuthentication().getName();
+        if (!existing.getPatient().getUsername().equals(username)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        Appointment updated = appointmentService.updateAppointment(
+                id,
+                req.getPatientId(),
+                req.getDoctorId(),
+                req.getAppointmentDateTime(),
+                req.getDescription());
         return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAppointment(@PathVariable Long id) {
-        boolean deleted = appointmentService.deleteAppointment(id);
-        if (!deleted) {
+        Appointment existing = appointmentService.getAppointmentById(id);
+        if (existing == null) {
             return ResponseEntity.notFound().build();
         }
+        String username = SecurityContextHolder.getContext()
+                             .getAuthentication().getName();
+        if (!existing.getPatient().getUsername().equals(username)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        appointmentService.deleteAppointment(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/patient/{patientId}")
-    public List<Appointment> getByPatient(@PathVariable Long patientId) {
-        return appointmentService.getAppointmentsByPatient(patientId);
+    public ResponseEntity<List<Appointment>> getByPatient(@PathVariable Long patientId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        boolean isAdminOrDoctor = auth.getAuthorities().stream()
+            .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN")
+                        || a.getAuthority().equals("ROLE_DOCTOR"));
+        if (!isAdminOrDoctor) {
+            String username = auth.getName();
+            User user = userRepository.findByUsername(username);
+            if (!user.getId().equals(patientId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
+        List<Appointment> list = appointmentService.getAppointmentsByPatient(patientId);
+        return ResponseEntity.ok(list);
     }
 
     @GetMapping("/doctor/{doctorId}")
-    public List<Appointment> getByDoctor(@PathVariable Long doctorId) {
-        return appointmentService.getAppointmentsByDoctor(doctorId);
+    public ResponseEntity<List<Appointment>> getByDoctor(@PathVariable Long doctorId) {
+        // only DOCTOR or ADMIN per SecurityConfig
+        return ResponseEntity.ok(appointmentService.getAppointmentsByDoctor(doctorId));
     }
 }

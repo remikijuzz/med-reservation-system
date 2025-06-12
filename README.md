@@ -1,354 +1,384 @@
-## Spis treści
+# Medical Reservation System
 
-1. [Temat i Cel Projektu](#temat-i-cel-projektu)
-2. [Wymagania Formalne](#wymagania-formalne)
-3. [Wymagania Funkcjonalne](#wymagania-funkcjonalne)
-4. [Technologie i Narzędzia](#technologie-i-narzędzia)
-5. [Architektura Systemu](#architektura-systemu)
-6. [Instalacja i Uruchomienie](#instalacja-i-uruchomienie)
-7. [Konfiguracja i Migracje Bazy](#konfiguracja-i-migracje-bazy)
-8. [Przykładowe Dane (Seed)](#przyk%C5%82adowe-dane-seed)
-9. [Endpointy API i Autoryzacja](#endpointy-api-i-autoryzacja)
-10. [Testy i Pokrycie Kodem](#testy-i-pokrycie-kodem)
-11. [Commity i Repozytorium Git](#commity-i-repozytorium-git)
-12. [Przykłady Użycia (Demo)](#przyk%C5%82ady-u%C5%BCycia-demo)
-13. [Diagram ERD](#diagram-erd)
-14. [Zastosowane Wzorce Projektowe i SOLID](#zastosowane-wzorce-projektowe-i-solid)
-15. [Screenshots](#screenshots)
+## Opis działania projektu
+
+Medical Reservation System to aplikacja webowa typu REST API umożliwiająca:
+
+* **Rejestrację i logowanie** użytkowników o rolach USER, DOCTOR, PATIENT i ADMIN.  
+* **Zarządzanie wizytami medycznymi**: tworzenie, przeglądanie, aktualizacja i usuwanie wizyt.  
+* **Powiadomienia** o zaplanowanych, zmienionych lub odwołanych wizytach, wysyłane e-mailem lub SMS (wzorzec Strategy).
+
+### 1. Wymagania konieczne
+
+**1.1. Role-Based Access Control**  
+Aplikacja definiuje cztery role: `ROLE_USER`, `ROLE_ADMIN`, `ROLE_DOCTOR` i `ROLE_PATIENT`.  
+Autoryzację HTTP skonfigurowano w klasie `SecurityConfig`:
+
+- **Publiczne**: wszystkie ścieżki `/api/auth/**` oraz Swagger UI (`/swagger-ui.html`, `/v3/api-docs/**`).  
+- **ADMIN only**: `POST`, `PUT`, `DELETE` na `/api/doctors/**` i `/api/patients/**`.  
+- **Authenticated** (`USER`, `ADMIN`, `DOCTOR`, `PATIENT`): `GET /api/doctors/**`, `GET /api/patients/**` oraz wszystkie operacje na `/api/appointments/**`.  
+
+Uwierzytelnianie odbywa się przez JWT, a role są ładowane w `CustomUserDetailsService` i umieszczane w tokenie.
+
+**1.2. Polimorfizm i wzorzec projektowy**  
+Do wysyłania powiadomień zastosowano wzorzec **Strategy**:
+
+- Interfejs `NotificationService` z metodą `sendNotification(User, String)`.  
+- Dwie implementacje:
+  - `EmailNotificationService` (`@Service("EMAIL")`)  
+  - `SmsNotificationService`   (`@Service("SMS")`)  
+- Wstrzyknięto `Map<String, NotificationService>` w `AppointmentService`, aby według pola `notificationChannel` użytkownika wybierać odpowiedni serwis.  
+
+To rozwiązanie wykorzystuje **polimorfizm** (różne klasy pod jednym interfejsem) i spełnia zasadę **Open/Closed** – w przyszłości wystarczy dodać kolejną klasę `@Service("PUSH")`, by wspierać nowy kanał.
 
 ---
 
-## Temat i Cel Projektu
+### 2. Warstwa prezentacji (Controllers)
 
-* **Temat:** Medical Reservation System (zatwierdzony przez prowadzącego)
-* **Cel:** Umożliwienie rejestracji, logowania oraz zarządzania wizytami medycznymi z podziałem na role użytkownika i administratora.
+* Klasy w pakiecie `org.example.medreservationsystem.controller` odpowiadają za odbiór żądań HTTP:
+  * **AuthController**: endpointy `/api/auth/**` do rejestracji i logowania (generowanie JWT).
+  * **DoctorController**, **PatientController**, **AppointmentController**: CRUD dla obiektów Doctor, Patient, Appointment.  
+* Każdy controller zwraca odpowiednie kody HTTP (`201 Created`, `200 OK`, `404 Not Found`, `204 No Content`).  
+* Walidacja wejścia (`@Valid`, `@NotBlank`, `@NotNull`) zapewnia podstawową kontrolę danych.
 
-## Wymagania Formalne
+### 3. Warstwa logiki biznesowej (Services)
 
-1. **Obiektowość i zasady SOLID** – wszystkie warstwy (model, serwisy, kontrolery) oparte na interfejsach, wstrzykiwanie zależności, separation of concerns.
-2. **Role-Based Access Control** – dwie role: `ROLE_USER` i `ROLE_ADMIN`, zarządzane przez Spring Security.
-3. **Polimorfizm i wzorzec projektowy** – przykładowo wzorzec **Strategy** w implementacji powiadomień (Email/SMS).
-4. **Repozytorium Git** – projekt znajduje się na GitHubie, commity opisane wg konwencji `type(scope): description`.
-5. **Docker** – aplikacja i baza PostgreSQL uruchamiane przez `docker-compose.yml`.
-6. **Maven** – standardowa struktura projektu z `pom.xml` zawierającym zależności i konfigurację build.
-7. **Spring Framework + Spring Security** – Spring Boot dla logiki biznesowej i REST API, Spring Security do autoryzacji.
-8. **Springdoc OpenAPI (Swagger UI)** – dostępny pod `/swagger-ui.html`.
-9. **Hibernate + PostgreSQL + Flyway** – encje JPA, konfiguracja bazy PostgreSQL, migracje Flyway w `src/main/resources/db/migration`.
-10. **JUnit + JaCoCo ≥80% pokrycia** – testy jednostkowe we wszystkich warstwach, pokrycie kodem raportowane.
-11. **Dokumentacja** – plik `README.md` zawiera instrukcje, diagram ERD i zrzuty ekranu.
+* Pakiet `org.example.medreservationsystem.service` implementuje kluczowe operacje:
+  * **AuthService**: rejestracja użytkowników, enkodowanie haseł, generowanie tokenów JWT.  
+  * **AppointmentService**: tworzenie i zarządzanie wizytami; po zapisaniu wizyty wysyła powiadomienia (polimorfizm NotificationService).  
+  * **DoctorService** i **PatientService**: operacje CRUD na encjach Doctor i Patient.  
+  * **JwtService** i **CustomUserDetailsService**: obsługa tokenów JWT i integracja ze Spring Security.  
+* Zasada **Single Responsibility**: każdy serwis ma jasno wyodrębniony zakres odpowiedzialności.
 
-## Wymagania Funkcjonalne
+### 4. Warstwa dostępu do danych (Repositories)
 
-* Rejestracja i logowanie użytkowników
-* Zarządzanie rolami (użytkownik, administrator)
-* Przeglądanie dostępnych terminów wizyt
-* Rezerwacja wizyty przez użytkownika
-* Zarządzanie wizytami przez administratora
-* Powiadomienia e-mail i SMS
+* Pakiet `org.example.medreservationsystem.repository` używa Spring Data JPA:
+  * **UserRepository**: wyszukiwanie po loginie, sprawdzanie unikalności username/email.  
+  * **DoctorRepository**, **PatientRepository**, **AppointmentRepository**: dedykowane metody finderów (`findByDoctorId`, `findByPatientId`).  
+* Mapowanie obiektowo-relacyjne realizowane przez Hibernate i adnotacje JPA.
 
-## Technologie i Narzędzia
+### 5. Konfiguracje i zabezpieczenia
 
-* Java 17
-* Spring Boot 3
-* Spring Security, Spring Data JPA
-* PostgreSQL
-* Flyway
-* Springdoc OpenAPI
-* Docker, Docker Compose
-* Maven
-* JUnit, JaCoCo
+* Pakiet `org.example.medreservationsystem.config`:
+  * **SecurityConfig**: Spring Security z JWT, Role-Based Access Control, CORS i CSRF wyłączone.  
+  * **OpenApiConfig**: konfiguracja Springdoc OpenAPI (Swagger UI) zabezpieczona `bearerAuth`.  
+* **JwtAuthenticationFilter** (pakiet `security`): parsowanie tokenu, ustawienie kontekstu bezpieczeństwa.
 
-## Architektura Systemu
+### 6. Powiadomienia (Notification)
 
-Opis warstw:
+* Wzorzec **Strategy**: interfejs `NotificationService` z implementacjami `EmailNotificationService` i `SmsNotificationService`.  
+* W `AppointmentService` wybór odpowiedniej usługi na podstawie preferencji użytkownika (`notificationChannel`).
 
-* **Controller** – warstwa prezentacji (REST API)
-* **Service** – logika biznesowa
-* **Repository** – dostęp do bazy danych
+### 7. Migracje bazy danych i uruchomienie
 
-## Instalacja i Uruchomienie
+* **Flyway**: migracje SQL w `src/main/resources/db/migration/V1__init.sql` tworzą tabele `users`, `user_roles`, `doctors`, `patients`, `appointments`.  
+* Baza PostgreSQL zarządzana przez Docker Compose (`docker-compose.yml`).
 
-1. Sklonuj repozytorium:
+### 8. Swagger UI (Demo)
 
-   ```bash
-   git clone <repo_url>
-   cd med-reservation-system
-   ```
-2. Uruchom Docker Compose (uruchamia PostgreSQL i aplikację, jeśli skonfigurowane):
+Poniżej krok po kroku, jak przygotować środowisko demo i przetestować aplikację w Swagger UI, wliczając ręczne wstawienie przykładowych danych SQL oraz rejestrację/logowanie użytkowników.
 
-   ```bash
-   docker-compose up -d
-   ```
-3. Zbuduj i uruchom aplikację lokalnie (jeśli nie w Dockerze):
+#### A. Wstawienie przykładowych danych (SQL)
 
-   ```bash
-   mvn clean package
-   mvn spring-boot:run
-   ```
-4. Sprawdź logi Flyway i Hibernate, aby upewnić się, że migracje i walidacja schematu przebiegły poprawnie.
+````sql
+-- 1) Wszyscy użytkownicy: user1, admin, dwóch doktorów, dwóch pacjentów
+INSERT INTO users (username, email, password, dtype, notification_channel)
+VALUES
+  ('user1',    'user1@example.com',    'pass1',      'User',    'EMAIL'),
+  ('admin',    'admin@example.com',    'adminpass',  'User',    'EMAIL'),
+  ('doctor1',  'doctor1@example.com',  'pass2',      'Doctor',  'EMAIL'),
+  ('doctor2',  'doctor2@example.com',  'pass3',      'Doctor',  'SMS'),
+  ('patient1', 'patient1@example.com', 'pass4',      'Patient', 'EMAIL'),
+  ('patient2', 'patient2@example.com', 'pass5',      'Patient', 'SMS');
 
-## Konfiguracja i Migracje Bazy
+-- 2) Role dla wszystkich Userów
+INSERT INTO user_roles (user_id, role)
+SELECT id, 'ROLE_USER' FROM users
+  WHERE username IN ('user1','admin','doctor1','doctor2','patient1','patient2');
 
-* Ustawienia w `application.properties` lub `application.yml`:
+-- 3) Dodatkowe role
+INSERT INTO user_roles (user_id, role)
+SELECT id, 'ROLE_ADMIN'   FROM users WHERE username = 'admin';
+INSERT INTO user_roles (user_id, role)
+SELECT id, 'ROLE_DOCTOR'  FROM users WHERE username IN ('doctor1','doctor2');
+INSERT INTO user_roles (user_id, role)
+SELECT id, 'ROLE_PATIENT' FROM users WHERE username IN ('patient1','patient2');
 
-  ```properties
-  spring.datasource.url=jdbc:postgresql://localhost:5432/meddb
-  spring.datasource.username=postgres
-  spring.datasource.password=...
-  spring.jpa.hibernate.ddl-auto=validate
-  spring.flyway.enabled=true
-  spring.flyway.locations=classpath:db/migration
-  jwt.secret=<Base64 32B secret>
-  jwt.expiration-ms=86400000
-  springdoc.api-docs.path=/v3/api-docs
-  springdoc.swagger-ui.path=/swagger-ui.html
-  ```
-* Flyway migracje w `src/main/resources/db/migration`, np. `V1__init.sql` tworzy tabele z kolumną `notification_channel`.
-* Aby odtworzyć schemat od nowa w dewelopmencie, usuń wolumen bazy i uruchom ponownie Docker Compose.
+-- 4) Szczegóły lekarzy
+INSERT INTO doctors (id, first_name, last_name, specialization, phone_number)
+SELECT id, 'John', 'Doe', 'General',   '+48111111111' FROM users WHERE username = 'doctor1';
+INSERT INTO doctors (id, first_name, last_name, specialization, phone_number)
+SELECT id, 'Jane', 'Roe', 'Neurology', '+48222222222' FROM users WHERE username = 'doctor2';
 
-## Przykładowe Dane (Seed)
+-- 5) Szczegóły pacjentów
+INSERT INTO patients (id, first_name, last_name, phone_number)
+SELECT id, 'Alice', 'Wonder', '+48333333333' FROM users WHERE username = 'patient1';
+INSERT INTO patients (id, first_name, last_name, phone_number)
+SELECT id, 'Bob',   'Builder', '+48444444444' FROM users WHERE username = 'patient2';
 
-Poniżej przykład sadzenia bazy danymi testowymi. Możesz dodać te inserty do migracji Flyway lub uruchomić bezpośrednio w SQL klientcie.
+-- 6) Przykładowe wizyty (2 dla patient1, 2 dla patient2)
+INSERT INTO appointments (appointment_date_time, patient_id, doctor_id, description)
+VALUES
+  ('2025-06-15 09:00:00',
+     (SELECT id FROM users WHERE username='patient1'),
+     (SELECT id FROM users WHERE username='doctor1'),
+     'Konsultacja ogólna'),
+  ('2025-06-16 10:30:00',
+     (SELECT id FROM users WHERE username='patient1'),
+     (SELECT id FROM users WHERE username='doctor2'),
+     'Kontrola wyników'),
+  ('2025-06-17 11:00:00',
+     (SELECT id FROM users WHERE username='patient2'),
+     (SELECT id FROM users WHERE username='doctor1'),
+     'Badanie profilaktyczne'),
+  ('2025-06-18 14:00:00',
+     (SELECT id FROM users WHERE username='patient2'),
+     (SELECT id FROM users WHERE username='doctor2'),
+     'Konsultacja specjalistyczna');
 
 ```sql
--- Sample users: basic user i admin
-INSERT INTO "user" (id, username, email, password, notification_channel)
-VALUES
-  (1, 'user1', 'user1@example.com', '$2a$10$ABCDEFG...', 'EMAIL'),
-  (2, 'admin', 'admin@example.com', '$2a$10$HIJKLMN...', 'EMAIL');
+````
 
-INSERT INTO user_roles (user_id, role)
-VALUES
-  (1, 'ROLE_USER'),
-  (2, 'ROLE_USER'),
-  (2, 'ROLE_ADMIN');
+#### B. Rejestracja użytkownika, logowanie i dostęp do endpointów dla zwykłego użytkownika.
 
--- Sample doctors
-INSERT INTO doctor (id, first_name, last_name, specialization, phone_number, user_id)
-VALUES
-  (1, 'John', 'Doe', 'Cardiology', '123456789', 2),
-  (2, 'Alice', 'Smith', 'Dermatology', '987654321', 2);
-
--- Sample patients
-INSERT INTO patient (id, first_name, last_name, phone_number, user_id)
-VALUES
-  (1, 'Anna', 'Kowalska', '555111222', 1),
-  (2, 'Piotr', 'Nowak', '555333444', 1);
-```
-
-## Endpointy API i Autoryzacja
-
-* **Publiczne:**
-
-  * `POST /api/auth/register` – rejestracja zwykłego użytkownika (ROLE\_USER).
-  * `POST /api/auth/register-admin` – rejestracja administratora (ROLE\_ADMIN).
-  * `POST /api/auth/register/patient` – rejestracja pacjenta z danymi.
-  * `POST /api/auth/register/doctor` – rejestracja lekarza z danymi.
-  * `POST /api/auth/login` – logowanie i otrzymanie JWT.
-  * Swagger UI: `/swagger-ui.html`, OpenAPI: `/v3/api-docs`.
-* **Chronione (wymagają Authorization: Bearer <token>):**
-
-  * `GET /api/doctors` – dostęp dla zalogowanych (USER, ADMIN, DOCTOR, PATIENT).
-  * `POST /api/doctors` – tylko ADMIN.
-  * `PUT /api/doctors/{id}` – tylko ADMIN.
-  * `DELETE /api/doctors/{id}` – tylko ADMIN.
-  * `GET /api/patients` – dostęp dla zalogowanych.
-  * `POST /api/patients` – tylko ADMIN.
-  * `PUT /api/patients/{id}` – tylko ADMIN.
-  * `DELETE /api/patients/{id}` – tylko ADMIN.
-  * `GET /api/appointments/**` – każdy zalogowany.
-  * `POST /api/appointments` – każdy zalogowany.
-  * `PUT /api/appointments/{id}` – każdy zalogowany.
-  * `DELETE /api/appointments/{id}` – każdy zalogowany.
-  * Dodatkowe: `GET /api/appointments/patient/{patientId}`, `GET /api/appointments/doctor/{doctorId}` – każdy zalogowany.
-
-## Testy i Pokrycie Kodem
-
-* Uruchamianie testów: `mvn test`.
-* Raport JaCoCo w `target/site/jacoco/index.html`. Celem jest pokrycie ≥80%.
-* Testy integracyjne z MockMvc sprawdzające rejestrację, login, dostęp z tokenem, CRUD endpointów.
-
-## Commity i Repozytorium Git
-
-* Regularne, opisowe commity wg konwencji, np. `feat(auth): add JWT authentication`, `fix(security): correct role saving`.
-* Utwórz pull requesty, code review.
-
-## Przykłady Użycia (Demo)
-
-Poniżej krok po kroku opis testowania endpointów w Swagger UI oraz przy pomocy curl:
-
-### 1. Swagger UI
-
-1. Otwórz w przeglądarce: `http://localhost:8080/swagger-ui.html`.
-
-2. Sekcja Auth:
-
-   * **POST /api/auth/register** – rejestracja zwykłego użytkownika.
-   * **POST /api/auth/register-admin** – rejestracja administratora.
-   * **POST /api/auth/register/patient?firstName=...\&lastName=...\&phoneNumber=...** – rejestracja pacjenta.
-   * **POST /api/auth/register/doctor?firstName=...\&lastName=...\&specialization=...\&phoneNumber=...** – rejestracja lekarza.
-   * **POST /api/auth/login** – logowanie.
-
-3. Rejestracja użytkowników:
-
-   * **Zwykły użytkownik:**
-
-     1. Kliknij `POST /api/auth/register`, Try it out.
-     2. Wklej body:
-
-        ```json
-        {
-          "username": "user1",
-          "email": "user1@example.com",
-          "password": "Haslo123",
-          "notificationChannel": "EMAIL"
-        }
-        ```
-     3. Execute → otrzymasz Status 201 i JSON z rolą `ROLE_USER`.
-
-   * **Administrator:**
-
-     1. Kliknij `POST /api/auth/register-admin`, Try it out.
-     2. Body:
-
-        ```json
-        {
-          "username": "admin",
-          "email": "admin@example.com",
-          "password": "AdminPass123",
-          "notificationChannel": "EMAIL"
-        }
-        ```
-     3. Execute → Status 201 i JSON z rolami `ROLE_USER` i `ROLE_ADMIN`.
-
-### 2. Login i autoryzacja w Swagger UI
-
-1. **Zwykły użytkownik:**
-
-   * Kliknij `POST /api/auth/login`, Try it out.
-   * Body:
+1. **Rejestracja nowego użytkownika (ROLE_USER):**  
+   * AuthController → `POST /api/auth/register`  
+   * Kliknij **Try it out** i wklej:
 
      ```json
-     { "username": "user1", "password": "Haslo123" }
+     {
+       "username": "user3",
+       "email":    "user3@example.com",
+       "password": "pass3",
+       "notificationChannel": "EMAIL"
+     }
      ```
-   * Execute → Status 200 i zwrócony token:
+   * Kliknij **Execute** → otrzymasz `201 Created` i obiekt `User` z wygenerowanym `id`.
+
+2. **Logowanie użytkownika:**  
+   * AuthController → `POST /api/auth/login`  
+   * Kliknij **Try it out** i wklej:
 
      ```json
-     { "token": "<USER_JWT_TOKEN>" }
+     {
+       "username": "user3",
+       "password": "pass3"
+     }
      ```
-
-2. **Administrator:**
-
-   * Kliknij `POST /api/auth/login`, Try it out.
-   * Body:
+   * Kliknij **Execute** → w odpowiedzi:
 
      ```json
-     { "username": "admin", "password": "AdminPass123" }
+     {
+       "token": "<JWT_TOKEN_USER>"
+     }
      ```
-   * Execute → Status 200 i zwrócony token:
+
+3. **Ustawienie tokena użytkownika w Swagger UI:**  
+   * Kliknij **Authorize** (ikonka kłódki) w prawym górnym rogu.  
+   * W polu **Value** wpisz:
+
+     ```
+     <JWT_TOKEN_USER>
+     ```
+   * Kliknij **Authorize** → teraz wszystkie żądania będą wysyłane jako zalogowany użytkownik.
+
+4. **Dostępne endpointy dla zwykłego użytkownika (ROLE_USER):**  
+   * `GET    /api/doctors`                    – lista lekarzy  
+   * `GET    /api/patients`                   – lista pacjentów  
+   * `GET    /api/appointments`               – wszystkie wizyty  
+   * `POST   /api/appointments`               – tworzenie nowej wizyty  
+   * `PUT    /api/appointments/{id}`          – aktualizacja swojej wizyty  
+   * `DELETE /api/appointments/{id}`          – usunięcie swojej wizyty  
+   * `GET    /api/appointments/patient/{id}`  – wizyty danego pacjenta (własne)  
+   * `GET    /api/appointments/doctor/{id}`   – wizyty przypisane do lekarza
+
+
+#### C. Rejestracja, logowanie i dostęp do endpointów dla administratora. 
+
+1. **Rejestracja administratora (ROLE\_ADMIN):**
+
+   * AuthController → `POST /api/auth/register-admin`
+   * Kliknij *Try it out* i wklej:
 
      ```json
-     { "token": "<ADMIN_JWT_TOKEN>" }
+     {
+       "username": "admin1",
+       "email": "admin1@example.com",
+       "password": "adminpass",
+       "notificationChannel": "EMAIL"
+     }
+     ```
+   * Kliknij *Execute* → `201 Created`.
+
+2. **Logowanie administratora:**
+
+   * AuthController → `POST /api/auth/login`
+   * Kliknij *Try it out* i wklej:
+
+     ```json
+     {
+       "username": "admin1",
+       "password": "adminpass"
+     }
+     ```
+   * Kliknij *Execute* → otrzymasz:
+
+     ```json
+     {
+       "token": "<JWT_TOKEN_ADMIN>"
+     }
      ```
 
-3. Kliknij **Authorize** (ikonka kłódki) w Swagger UI.
+3. **Ustawienie tokena administratora:**
 
-4. Wklej najpierw `Bearer <USER_JWT_TOKEN>`, zatwierdź, przetestuj endpointy dla USER.
+   * Kliknij **Authorize** i wpisz:
 
-5. Powtórz, wklejając `Bearer <ADMIN_JWT_TOKEN>`, aby przetestować endpointy ADMIN.
+     ```text
+     <JWT_TOKEN_ADMIN>
+     ```
 
-### 3. Testowanie endpointów jako zwykły użytkownik (ROLE\_USER)
+4. **Dostępne endpointy dla administratora (ROLE_ADMIN):**
 
-> **Uwaga:** ROLE\_USER **nie ma dostępu** do endpointów ADMIN-only.
+   * **CRUD lekarzy:**
+     * `GET    /api/doctors`           – pobiera listę wszystkich lekarzy  
+     * `POST   /api/doctors`           – tworzy nowego lekarza  
+     * `PUT    /api/doctors/{id}`      – aktualizuje dane lekarza o podanym `id`  
+     * `DELETE /api/doctors/{id}`      – usuwa lekarza o podanym `id`  
 
-1. **GET /api/doctors** – 200 OK.
-2. **POST /api/doctors** – 403 Forbidden.
-3. **GET /api/patients** – 200 OK (konfiguracja `hasAnyRole("USER",...)`).
-4. **POST /api/patients** – 403 Forbidden.
-5. **POST /api/appointments** – 201 Created.
-6. **GET /api/appointments/patient/1** – 200 OK.
-7. **PUT /api/appointments/{id}**, **DELETE /api/appointments/{id}** – dostępne, ale warto dodatkowo ograniczyć do własnych wizyt.
+   * **CRUD pacjentów:**
+     * `GET    /api/patients`          – pobiera listę wszystkich pacjentów  
+     * `POST   /api/patients`          – tworzy nowego pacjenta  
+     * `PUT    /api/patients/{id}`     – aktualizuje dane pacjenta o podanym `id`  
+     * `DELETE /api/patients/{id}`     – usuwa pacjenta o podanym `id`  
 
-### 4. Testowanie endpointów jako administrator (ROLE\_ADMIN)
 
-1. **GET /api/doctors** – 200 OK.
-2. **POST /api/doctors** – 201 Created.
-3. **PUT /api/doctors/{id}** – 200 OK.
-4. **DELETE /api/doctors/{id}** – 204 No Content.
-5. **GET/POST/PUT/DELETE /api/patients** – admin ma pełne prawa.
-6. **GET /api/appointments** – 200 OK, lista wszystkich wizyt.
-7. **DELETE /api/appointments/{id}** – 204 No Content.
+#### D. Rejestracja pacjenta, logowanie i dodawanie wizyty
 
-### 5. Przykłady curl
+1. **Rejestracja nowego pacjenta (ROLE_PATIENT)**  
+   * AuthController → `POST /api/auth/register/patient?firstName={firstName}&lastName={lastName}&phoneNumber={phone}`  
+   * Kliknij **Try it out**, ustaw query parameters:  
+     - `firstName` = `Jan`  
+     - `lastName` = `Kowalski`  
+     - `phoneNumber` = `+48123123123`  
+   * W sekcji *Request body* wklej:
+     ```json
+     {
+       "username": "patient3",
+       "email":    "patient3@example.com",
+       "password": "patientpass",
+       "notificationChannel": "EMAIL"
+     }
+     ```
+   * Kliknij **Execute** → otrzymasz `201 Created` i obiekt `Patient` z polem `id`.
 
-#### Rejestracja user
+2. **Logowanie pacjenta**  
+   * AuthController → `POST /api/auth/login`  
+   * Kliknij **Try it out** i wklej:
+     ```json
+     {
+       "username": "patient3",
+       "password": "patientpass"
+     }
+     ```
+   * Kliknij **Execute** → w odpowiedzi:
+     ```json
+     {
+       "token": "<JWT_TOKEN_PATIENT>"
+     }
+     ```
 
-```bash
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"username":"user1","email":"user1@example.com","password":"Haslo123","notificationChannel":"EMAIL"}'
-```
+3. **Ustawienie tokena pacjenta w Swagger UI**  
+   * Kliknij **Authorize** (ikonka kłódki) w prawym górnym rogu.  
+   * W polu **Value** wpisz:
+     ```
+     <JWT_TOKEN_PATIENT>
+     ```
+   * Kliknij **Authorize** → teraz wszystkie żądania będą wysyłane jako zalogowany pacjent.
 
-#### Rejestracja admin
+4. **Dodanie nowej wizyty**  
+   * AppointmentController → `POST /api/appointments`  
+   * Kliknij **Try it out**, w *Request body* wklej (podmieniaj `patientId` na ID z rejestracji, `doctorId` na dowolnego lekarza z bazy, np. `1` lub `2`):
+     ```json
+     {
+       "patientId":          3,
+       "doctorId":           1,
+       "appointmentDateTime":"2025-06-20T10:00:00",
+       "description":        "Konsultacja kontrolna"
+     }
+     ```
+   * Kliknij **Execute** → otrzymasz `201 Created` i obiekt `Appointment`.  
+   * W zakładce **Responses** możesz zobaczyć cały JSON wizyty, w tym wygenerowane `id`, datę, pacjenta i lekarza.
 
-```bash
-curl -X POST http://localhost:8080/api/auth/register-admin \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","email":"admin@example.com","password":"AdminPass123","notificationChannel":"EMAIL"}'
-```
+5. **Pozostałe endpointy pacjenta**  
+   * `GET  /api/appointments/patient/{patientId}` – lista wizyt pacjenta  
+   * `PUT  /api/appointments/{id}`              – aktualizacja wizyty  
+   * `DELETE /api/appointments/{id}`             – usunięcie wizyty  
 
-#### Login user
+#### E. Rejestracja lekarza, logowanie i przeglądanie wizyt
 
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"user1","password":"Haslo123"}'
-```
+1. **Rejestracja nowego lekarza (ROLE_DOCTOR)**  
+   * AuthController → `POST /api/auth/register/doctor?firstName={firstName}&lastName={lastName}&specialization={spec}&phoneNumber={phone}`  
+   * Kliknij **Try it out**, ustaw query parameters:  
+     - `firstName` = `Anna`  
+     - `lastName` = `Nowak`  
+     - `specialization` = `Pediatrics`  
+     - `phoneNumber` = `+48987654321`  
+   * W sekcji *Request body* wklej:
+     ```json
+     {
+       "username": "doctor3",
+       "email":    "doctor3@example.com",
+       "password": "doctorpass",
+       "notificationChannel": "SMS"
+     }
+     ```
+   * Kliknij **Execute** → otrzymasz `201 Created` i obiekt `Doctor` z polem `id`.
 
-#### Login admin
+2. **Logowanie lekarza**  
+   * AuthController → `POST /api/auth/login`  
+   * Kliknij **Try it out** i wklej:
+     ```json
+     {
+       "username": "doctor3",
+       "password": "doctorpass"
+     }
+     ```
+   * Kliknij **Execute** → w odpowiedzi:
+     ```json
+     {
+       "token": "<JWT_TOKEN_DOCTOR>"
+     }
+     ```
 
-```bash
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"AdminPass123"}'
-```
+3. **Ustawienie tokena lekarza w Swagger UI**  
+   * Kliknij **Authorize** (ikonka kłódki) w prawym górnym rogu.  
+   * W polu **Value** wpisz:
+     ```
+     Bearer <JWT_TOKEN_DOCTOR>
+     ```
+   * Kliknij **Authorize** → teraz wszystkie żądania będą wysyłane jako zalogowany lekarz.
 
-#### Tworzenie lekarza jako ADMIN
+4. **Przeglądanie wizyt przypisanych do lekarza**  
+   * AppointmentController → `GET /api/appointments/doctor/{doctorId}`  
+   * Kliknij **Try it out**, w polu *Path* podmień `{doctorId}` na `3` (ID z rejestracji).  
+   * Kliknij **Execute** → otrzymasz listę wizyt:
+     ```json
+     [
+       {
+         "id": 1,
+         "appointmentDateTime": "2025-06-15T09:00:00",
+         "patient": { "id": 1, "firstName": "John", "lastName": "Doe", … },
+         "doctor":  { "id": 3, "firstName": "Anna", "lastName": "Nowak", … },
+         "description": "Konsultacja ogólna"
+       },
+       …
+     ]
+     ```
 
-```bash
-curl -X POST http://localhost:8080/api/doctors \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $TOKEN" \
-  -d '{"username":"drnew","email":"newdoc@example.com","password":"DocPass","firstName":"New","lastName":"Doctor","specialization":"Pediatrics","phoneNumber":"111222333","notificationChannel":"EMAIL"}'
-```
-
-#### Próba tworzenia lekarza jako USER
-
-```bash
-USER_TOKEN="<USER_JWT_TOKEN>"
-curl -X POST http://localhost:8080/api/doctors \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer $USER_TOKEN" \
-  -d '{"username":"drfail","email":"fail@example.com","password":"pass","firstName":"Fail","lastName":"Test","specialization":"Test","phoneNumber":"000","notificationChannel":"EMAIL"}'
-```
-
-## Diagram ERD
-
-(Tutaj wstaw diagram ERD, np. w formie obrazka lub linku do narzędzia.)
-
-## Zastosowane Wzorce Projektowe i SOLID
-
-* **Strategy** – powiadomienia Email/SMS.
-* **Dependency Injection** – serwisy i repozytoria.
-* **Separation of Concerns** – warstwy Controller/Service/Repository.
-* **SOLID**:
-
-  * Single Responsibility: każda klasa ma jedną odpowiedzialność.
-  * Open/Closed: serwisy otwarte na rozszerzenia przez interfejsy.
-  * Liskov Substitution: encje dziedziczące User (Doctor, Patient) zastępują prawidłowo.
-  * Interface Segregation: dedykowane interfejsy repozytoriów i serwisów.
-  * Dependency Inversion: zależność od abstrakcji przez Spring.
-
-## Screenshots
-
-(Tutaj wstaw zrzuty ekranu z Swagger UI, logów, wyników migracji.)
+5. **Dodatkowe operacje dostępne dla lekarza**  
+   * `GET    /api/doctors`                    – lista wszystkich lekarzy  
+   * `GET    /api/patients`                   – lista pacjentów  
+   * `GET    /api/appointments`               – wszystkie wizyty  
+   * `POST   /api/appointments`               – tworzenie nowej wizyty  
+   * `PUT    /api/appointments/{id}`          – aktualizacja wizyty  
+   * `DELETE /api/appointments/{id}`          – usunięcie wizyty  

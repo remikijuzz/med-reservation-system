@@ -1,5 +1,7 @@
+// src/main/java/org/example/medreservationsystem/model/Doctor.java
 package org.example.medreservationsystem.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,6 +15,7 @@ import javax.persistence.*;
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
 public class Doctor extends User {
 
     @Column(name = "first_name", nullable = false)

@@ -1,3 +1,4 @@
+// src/main/java/org/example/medreservationsystem/config/SecurityConfig.java
 package org.example.medreservationsystem.config;
 
 import org.example.medreservationsystem.security.JwtAuthenticationFilter;
@@ -53,20 +54,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            // 1) Włączamy CORS
-            .cors()
-        .and()
-            // 2) Wyłączamy CSRF (bo JWT stateless)
+            .cors().and()
             .csrf().disable()
-            .headers().frameOptions().disable()
-        .and()
-            // 3) Stateless session
+            .headers().frameOptions().disable().and()
             .sessionManagement()
                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-        .and()
-            // 4) Reguły dostępu, włącznie z permitAll OPTIONS
+            .and()
             .authorizeRequests()
-               .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()    // pozwól na preflight
+               .antMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                .antMatchers(
                    "/api/auth/**",
                    "/swagger-ui.html",
@@ -75,27 +70,37 @@ public class SecurityConfig {
                    "/swagger-resources/**",
                    "/webjars/**"
                ).permitAll()
+
+               // ADMIN-only for doctor/patient CRUD
                .antMatchers(HttpMethod.POST,   "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
                .antMatchers(HttpMethod.PUT,    "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
                .antMatchers(HttpMethod.DELETE, "/api/doctors/**", "/api/patients/**").hasRole("ADMIN")
-               .antMatchers(HttpMethod.GET,    "/api/doctors/**", "/api/patients/**")
+
+               // all authenticated roles can list doctors/patients
+               .antMatchers(HttpMethod.GET, "/api/doctors/**", "/api/patients/**")
                    .hasAnyRole("USER","ADMIN","DOCTOR","PATIENT")
-               .antMatchers("/api/appointments/**").authenticated()
+
+               // Appointments: fine-grained rules
+               .antMatchers(HttpMethod.GET,  "/api/appointments/patient/**").hasAnyRole("PATIENT","DOCTOR","ADMIN")
+               .antMatchers(HttpMethod.GET,  "/api/appointments/doctor/**").hasAnyRole("DOCTOR","ADMIN")
+               .antMatchers(HttpMethod.GET,  "/api/appointments").hasAnyRole("DOCTOR","ADMIN")
+               .antMatchers(HttpMethod.GET,  "/api/appointments/*").hasAnyRole("DOCTOR","ADMIN")
+
+               .antMatchers(HttpMethod.POST,   "/api/appointments").hasRole("PATIENT")
+               .antMatchers(HttpMethod.PUT,    "/api/appointments/*").hasRole("PATIENT")
+               .antMatchers(HttpMethod.DELETE, "/api/appointments/*").hasRole("PATIENT")
+
                .anyRequest().authenticated()
-        .and()
-            // 5) Nasz JWT-filter
+            .and()
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    /**
-     * Definicja globalnej polityki CORS – pozwalamy na Authorization i Content-Type
-     */
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOrigins(List.of("*")); // możesz zawęzić do własnej domeny
+        config.setAllowedOrigins(List.of("*"));
         config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
         config.setAllowedHeaders(List.of("Authorization","Content-Type"));
         config.setAllowCredentials(true);
